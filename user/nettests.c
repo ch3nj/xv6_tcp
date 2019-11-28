@@ -239,7 +239,7 @@ main(int argc, char *argv[])
   printf("OK\n");
 
   printf("testing single-process pings: ");
-  for (i = 0; i < 5; i++)
+  for (i = 0; i < 100; i++)
     ping(2000, dport, 1);
   printf("OK\n");
 
