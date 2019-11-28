@@ -1,0 +1,143 @@
+
+xv6 kernel is booting
+
+virtio disk init 0
+init: starting sh
+$ usertests
+usertests starting
+test reparent2: OK
+test pgbug: OK
+test sbrkbugs: usertrap(): unexpected scause 0x000000000000000c (instruction page fault) pid=3207
+            sepc=0x00000000000044b6 stval=0x00000000000044b6
+usertrap(): unexpected scause 0x000000000000000c (instruction page fault) pid=3208
+            sepc=0x00000000000044b6 stval=0x00000000000044b6
+OK
+test badarg: OK
+test reparent: OK
+test twochildren: OK
+test forkfork: OK
+test forkforkfork: OK
+test argptest: OK
+test createdelete: OK
+test linkunlink: OK
+test linktest: OK
+test unlinkread: OK
+test concreate: OK
+test subdir: OK
+test fourfiles: OK
+test sharedfd: OK
+test exectest: OK
+test bigargtest: OK
+test bigwrite: OK
+test bsstest: OK
+test sbrkbasic: OK
+test sbrkmuch: OK
+test kernmem: usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6132
+            sepc=0x0000000000000766 stval=0x0000000080000000
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6133
+            sepc=0x0000000000000766 stval=0x000000008000c350
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6134
+            sepc=0x0000000000000766 stval=0x00000000800186a0
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6135
+            sepc=0x0000000000000766 stval=0x00000000800249f0
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6136
+            sepc=0x0000000000000766 stval=0x0000000080030d40
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6137
+            sepc=0x0000000000000766 stval=0x000000008003d090
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6138
+            sepc=0x0000000000000766 stval=0x00000000800493e0
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6139
+            sepc=0x0000000000000766 stval=0x0000000080055730
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6140
+            sepc=0x0000000000000766 stval=0x0000000080061a80
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6141
+            sepc=0x0000000000000766 stval=0x000000008006ddd0
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6142
+            sepc=0x0000000000000766 stval=0x000000008007a120
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6143
+            sepc=0x0000000000000766 stval=0x0000000080086470
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6144
+            sepc=0x0000000000000766 stval=0x00000000800927c0
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6145
+            sepc=0x0000000000000766 stval=0x000000008009eb10
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6146
+            sepc=0x0000000000000766 stval=0x00000000800aae60
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6147
+            sepc=0x0000000000000766 stval=0x00000000800b71b0
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6148
+            sepc=0x0000000000000766 stval=0x00000000800c3500
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6149
+            sepc=0x0000000000000766 stval=0x00000000800cf850
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6150
+            sepc=0x0000000000000766 stval=0x00000000800dbba0
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6151
+            sepc=0x0000000000000766 stval=0x00000000800e7ef0
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6152
+            sepc=0x0000000000000766 stval=0x00000000800f4240
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6153
+            sepc=0x0000000000000766 stval=0x0000000080100590
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6154
+            sepc=0x0000000000000766 stval=0x000000008010c8e0
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6155
+            sepc=0x0000000000000766 stval=0x0000000080118c30
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6156
+            sepc=0x0000000000000766 stval=0x0000000080124f80
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6157
+            sepc=0x0000000000000766 stval=0x00000000801312d0
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6158
+            sepc=0x0000000000000766 stval=0x000000008013d620
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6159
+            sepc=0x0000000000000766 stval=0x0000000080149970
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6160
+            sepc=0x0000000000000766 stval=0x0000000080155cc0
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6161
+            sepc=0x0000000000000766 stval=0x0000000080162010
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6162
+            sepc=0x0000000000000766 stval=0x000000008016e360
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6163
+            sepc=0x0000000000000766 stval=0x000000008017a6b0
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6164
+            sepc=0x0000000000000766 stval=0x0000000080186a00
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6165
+            sepc=0x0000000000000766 stval=0x0000000080192d50
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6166
+            sepc=0x0000000000000766 stval=0x000000008019f0a0
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6167
+            sepc=0x0000000000000766 stval=0x00000000801ab3f0
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6168
+            sepc=0x0000000000000766 stval=0x00000000801b7740
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6169
+            sepc=0x0000000000000766 stval=0x00000000801c3a90
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6170
+            sepc=0x0000000000000766 stval=0x00000000801cfde0
+usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6171
+            sepc=0x0000000000000766 stval=0x00000000801dc130
+OK
+test sbrkfail: usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6179
+            sepc=0x0000000000003980 stval=0x0000000000010000
+OK
+test sbrkarg: OK
+test validatetest: OK
+test stacktest: usertrap(): unexpected scause 0x000000000000000d (load page fault) pid=6183
+            sepc=0x00000000000007ce stval=0x000000000000dc60
+OK
+test opentest: OK
+test writetest: OK
+test writebig: OK
+test createtest: OK
+test openiput: OK
+test exitiput: OK
+test iput: OK
+test mem: OK
+test pipe1: OK
+test preempt: kill... wait... OK
+test exitwait: OK
+test rmdot: OK
+test fourteen: OK
+test bigfile: OK
+test dirfile: OK
+test iref: OK
+test forktest: OK
+test bigdir: OK
+ALL TESTS PASSED
+$ qemu-system-riscv64: terminating on signal 15 from pid 60441 (<unknown process>)
