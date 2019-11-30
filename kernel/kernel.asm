@@ -14818,18 +14818,18 @@ sockclose(struct sock *si, int writable) {
     8000735c:	621c                	ld	a5,0(a2)
     8000735e:	00022717          	auipc	a4,0x22
     80007362:	04f73923          	sd	a5,82(a4) # 800293b0 <sockets>
-      }
     }
   }
-  release(&lock);
-    80007366:	00022517          	auipc	a0,0x22
-    8000736a:	fda50513          	addi	a0,a0,-38 # 80029340 <lock>
-    8000736e:	ffffa097          	auipc	ra,0xffffa
-    80007372:	80e080e7          	jalr	-2034(ra) # 80000b7c <release>
+  
 
   // clean up
   release(&si->lock);
-    80007376:	854e                	mv	a0,s3
+    80007366:	854e                	mv	a0,s3
+    80007368:	ffffa097          	auipc	ra,0xffffa
+    8000736c:	814080e7          	jalr	-2028(ra) # 80000b7c <release>
+  release(&lock);
+    80007370:	00022517          	auipc	a0,0x22
+    80007374:	fd050513          	addi	a0,a0,-48 # 80029340 <lock>
     80007378:	ffffa097          	auipc	ra,0xffffa
     8000737c:	804080e7          	jalr	-2044(ra) # 80000b7c <release>
   kfree((char*)si);
