@@ -96,7 +96,8 @@ sockclose(struct sock *si, int writable) {
   while(!mbufq_empty(&si->rxq)) {
     mbuffree(mbufq_pophead(&si->rxq));
   }
-
+  
+  release(&si->lock);
   // remove from sockets
   acquire(&lock);
   pos = sockets;
@@ -117,7 +118,6 @@ sockclose(struct sock *si, int writable) {
   }
   release(&lock);
   // clean up
-  release(&si->lock);
   kfree((char*)si);
 }
 
@@ -148,7 +148,7 @@ sockread(struct sock *si, uint64 addr, int n) {
       release(&si->lock);
       return -1;
     }
-    sleep(&si->rxq, &si->lock);
+    sleep(&si->raddr, &si->lock);
   }
   m = mbufq_pophead(&si->rxq);
   release(&si->lock);
@@ -187,7 +187,7 @@ sockrecvudp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport)
     acquire(&si->lock);
     mbufq_pushtail(&si->rxq, m);
     release(&si->lock);
-    wakeup(&si->rxq);
+    wakeup(&si->raddr);
   } else {
     mbuffree(m);
   }

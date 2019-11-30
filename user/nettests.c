@@ -235,9 +235,9 @@ main(int argc, char *argv[])
 
   // printf("nettests running on port %d\n", dport);
 
-  // printf("testing one ping: ");
-  // ping(2000, dport, 2);
-  // printf("OK\n");
+  printf("testing one ping: ");
+  ping(2000, dport, 2);
+  printf("OK\n");
 
   printf("testing single-process pings: ");
   for (i = 0; i < 100; i++)
@@ -246,14 +246,14 @@ main(int argc, char *argv[])
 
 
   printf("testing multi-process pings: ");
-  for (i = 0; i < 5; i++){
+  for (i = 0; i < 20; i++){
     int pid = fork();
     if (pid == 0){
       ping(2000 + i + 1, dport, 1);
       exit(0);
     }
   }
-  for (i = 0; i < 5; i++){
+  for (i = 0; i < 10; i++){
     wait(&ret);
     if (ret != 0)
       exit(1);
@@ -277,7 +277,7 @@ main(int argc, char *argv[])
   //   if (ret != 0)
   //     exit(1);
   // }
-  printf("OK\n");
+  // printf("OK\n");
 
   printf("testing DNS\n");
   dns();
