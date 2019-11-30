@@ -105,11 +105,11 @@ e1000_transmit(struct mbuf *m)
   // a pointer so that it can be freed after sending.
   //
   printf("T1\n");
-  acquire(&e1000_lock_tx);
+  // acquire(&e1000_lock_tx);
   int current_position = regs[E1000_TDT];
   if ((tx_ring[current_position].status & E1000_TXD_STAT_DD) == 0) {
   	//previous transmission still in flight
-    release(&e1000_lock_tx);
+    // release(&e1000_lock_tx);
   	return 1;
   }
   //do a conditional check
@@ -131,7 +131,7 @@ e1000_transmit(struct mbuf *m)
 
   int next_position = (current_position + 1)%TX_RING_SIZE;
   regs[E1000_TDT] = next_position;
-  release(&e1000_lock_tx);
+  // release(&e1000_lock_tx);
   return 0;
 }
 
@@ -145,15 +145,16 @@ e1000_recv(void)
   // Create and deliver an mbuf for each packet (using net_rx()).
   //
 
-  acquire(&e1000_lock_rx);
+  // acquire(&e1000_lock_rx);
+  printf("REC1\n");
   int next_position = (regs[E1000_RDT] + 1)%RX_RING_SIZE;
   // struct rx_desc next_desc = rx_ring[next_position];
   if ((rx_ring[next_position].status & E1000_RXD_STAT_DD) == 0) {
   	//nothing to receive
-    release(&e1000_lock_rx);
+    // release(&e1000_lock_rx);
   	return;
   }
-  printf("REC\n");
+  printf("REC2\n");
   struct mbuf *next_mbuf = rx_mbufs[next_position];
   mbufput(next_mbuf, rx_ring[next_position].length);
   net_rx(next_mbuf);
@@ -168,7 +169,7 @@ e1000_recv(void)
   rx_mbufs[next_position] = m;
 
   regs[E1000_RDT] = next_position;
-  release(&e1000_lock_rx);
+  // release(&e1000_lock_rx);
 
   return;
 }

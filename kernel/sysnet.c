@@ -126,29 +126,34 @@ sockwrite(struct sock *si, uint64 addr, int n) {
   struct mbuf *m;
   struct proc *pr = myproc();
 
+  acquire(&si->lock);
   m = mbufalloc(MBUF_DEFAULT_HEADROOM);
 
   if (copyin(pr->pagetable, mbufput(m, n), addr, n) == -1) {
     return -1;
   }
   net_tx_udp(m, si->raddr ,si->lport, si->rport);
-
+  // wakeup(&si->rxq);
+  release(&si->lock);
   return n;
 }
 
 int
 sockread(struct sock *si, uint64 addr, int n) {
+  printf("sockread\n");
   struct mbuf *m;
   struct proc *pr = myproc();
   int i;
 
   acquire(&si->lock);
+  printf("acquired si lock\n");
   while(mbufq_empty(&si->rxq)) {
     if(myproc()->killed){
       release(&si->lock);
       return -1;
     }
-    sleep(&si->rxq, &si->lock);
+    printf("sleeping\n");
+    sleep(&si->lport, &si->lock);
   }
   m = mbufq_pophead(&si->rxq);
   release(&si->lock);
@@ -157,6 +162,7 @@ sockread(struct sock *si, uint64 addr, int n) {
       break;
     mbufpull(m, 1);
   }
+  printf("finish sockread\n");
   return i;
 }
 
@@ -171,6 +177,7 @@ sockrecvudp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport)
   // any sleeping reader. Free the mbuf if there are no sockets
   // registered to handle it.
   //
+  printf("sockrecvudp\n");
   struct sock *si;
   acquire(&lock);
   si = sockets;
@@ -186,8 +193,10 @@ sockrecvudp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport)
   if (si) {
     acquire(&si->lock);
     mbufq_pushtail(&si->rxq, m);
+    printf("waking up");
+    wakeup(&si->lport);
     release(&si->lock);
-    wakeup(&si->rxq);
+    
   } else {
     mbuffree(m);
   }

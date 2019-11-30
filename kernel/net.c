@@ -257,22 +257,27 @@ net_rx_arp(struct mbuf *m)
   printf("r arp\n");
 
   arphdr = mbufpullhdr(m, *arphdr);
-  if (!arphdr)
+  if (!arphdr) {
+    printf("fail 1");
     goto done;
+  }
 
   // validate the ARP header
   if (ntohs(arphdr->hrd) != ARP_HRD_ETHER ||
       ntohs(arphdr->pro) != ETHTYPE_IP ||
       arphdr->hln != ETHADDR_LEN ||
       arphdr->pln != sizeof(uint32)) {
+    printf("fail 2");
     goto done;
   }
 
   // only requests are supported so far
   // check if our IP was solicited
   tip = ntohl(arphdr->tip); // target IP address
-  if (ntohs(arphdr->op) != ARP_OP_REQUEST || tip != local_ip)
+  if (ntohs(arphdr->op) != ARP_OP_REQUEST || tip != local_ip) {
+    printf("fail 3");
     goto done;
+  }
 
   // handle the ARP request
   memmove(smac, arphdr->sha, ETHADDR_LEN); // sender's ethernet address
@@ -280,6 +285,7 @@ net_rx_arp(struct mbuf *m)
   net_tx_arp(ARP_OP_REPLY, smac, sip);
 
 done:
+  // printf("failing from netrxarp");
   mbuffree(m);
 }
 
@@ -311,10 +317,12 @@ net_rx_udp(struct mbuf *m, uint16 len, struct ip *iphdr)
   sip = ntohl(iphdr->ip_src);
   sport = ntohs(udphdr->sport);
   dport = ntohs(udphdr->dport);
+  printf("calling sockrecvudp");
   sockrecvudp(m, sip, dport, sport);
   return;
 
 fail:
+  printf("failing in netrxudp");
   mbuffree(m);
 }
 

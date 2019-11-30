@@ -205,6 +205,7 @@ dns()
   // 8.8.8.8: google's name server
   dst = (8 << 24) | (8 << 16) | (8 << 8) | (8 << 0);
 
+  printf("d1\n");
   if((fd = connect(dst, 10000, 53)) < 0){
     fprintf(2, "ping: connect() failed\n");
     exit(1);
@@ -212,11 +213,16 @@ dns()
 
   len = dns_req(obuf);
 
+  printf("d2\n");
   if(write(fd, obuf, len) < 0){
     fprintf(2, "dns: send() failed\n");
     exit(1);
   }
+
+  printf("d3\n");
   int cc = read(fd, ibuf, sizeof(ibuf));
+
+  
   if(cc < 0){
     fprintf(2, "dns: recv() failed\n");
     exit(1);
@@ -239,21 +245,21 @@ main(int argc, char *argv[])
   // ping(2000, dport, 2);
   // printf("OK\n");
 
-  printf("testing single-process pings: ");
-  for (i = 0; i < 100; i++)
-    ping(2000, dport, 1);
-  printf("OK\n");
+  // printf("testing single-process pings: ");
+  // for (i = 0; i < 10; i++)
+  //   ping(2000, dport, 1);
+  // printf("OK\n");
 
 
   printf("testing multi-process pings: ");
-  for (i = 0; i < 5; i++){
+  for (i = 0; i < 2; i++){
     int pid = fork();
     if (pid == 0){
       ping(2000 + i + 1, dport, 1);
       exit(0);
     }
   }
-  for (i = 0; i < 5; i++){
+  for (i = 0; i < 2; i++){
     wait(&ret);
     if (ret != 0)
       exit(1);
