@@ -246,7 +246,7 @@ main(int argc, char *argv[])
 
 
   printf("testing multi-process pings: ");
-  for (i = 0; i < 20; i++){
+  for (i = 0; i < 10; i++){
     int pid = fork();
     if (pid == 0){
       ping(2000 + i + 1, dport, 1);

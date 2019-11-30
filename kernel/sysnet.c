@@ -96,7 +96,7 @@ sockclose(struct sock *si, int writable) {
   while(!mbufq_empty(&si->rxq)) {
     mbuffree(mbufq_pophead(&si->rxq));
   }
-  
+
   release(&si->lock);
   // remove from sockets
   acquire(&lock);
@@ -172,7 +172,9 @@ sockrecvudp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport)
   // registered to handle it.
   //
   struct sock *si;
+  printf("hey\n");
   acquire(&lock);
+  printf("acq\n");
   si = sockets;
   while(si) {
     if (si->raddr == raddr &&
@@ -183,11 +185,13 @@ sockrecvudp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport)
     si = si->next;
   }
   release(&lock);
+  printf("rel\n");
   if (si) {
     acquire(&si->lock);
     mbufq_pushtail(&si->rxq, m);
-    release(&si->lock);
+    printf("wake");
     wakeup(&si->raddr);
+    release(&si->lock);
   } else {
     mbuffree(m);
   }
