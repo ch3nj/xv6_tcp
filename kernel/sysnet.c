@@ -90,7 +90,6 @@ bad:
 void
 sockclose(struct sock *si, int writable) {
   struct sock *pos, *next;
-  acquire(&lock);
   acquire(&si->lock);
 
   // free outstanding mbufs
@@ -99,7 +98,7 @@ sockclose(struct sock *si, int writable) {
   }
 
   // remove from sockets
-  
+  acquire(&lock);
   pos = sockets;
   if (pos->raddr == si->raddr &&
       pos->lport == si->lport &&
@@ -116,11 +115,9 @@ sockclose(struct sock *si, int writable) {
       }
     }
   }
-  
-
+  release(&lock);
   // clean up
   release(&si->lock);
-  release(&lock);
   kfree((char*)si);
 }
 
@@ -131,13 +128,10 @@ sockwrite(struct sock *si, uint64 addr, int n) {
 
   m = mbufalloc(MBUF_DEFAULT_HEADROOM);
 
-  acquire(&si->lock);
   if (copyin(pr->pagetable, mbufput(m, n), addr, n) == -1) {
-    release(&si->lock);
     return -1;
   }
   net_tx_udp(m, si->raddr ,si->lport, si->rport);
-  release(&si->lock);
 
   return n;
 }
@@ -157,12 +151,12 @@ sockread(struct sock *si, uint64 addr, int n) {
     sleep(&si->rxq, &si->lock);
   }
   m = mbufq_pophead(&si->rxq);
+  release(&si->lock);
   for(i = 0; i < n; i++){
     if(m->len == 0 || copyout(pr->pagetable, addr + i, m->head, 1) == -1)
       break;
     mbufpull(m, 1);
   }
-  release(&si->lock);
   return i;
 }
 
@@ -184,14 +178,11 @@ sockrecvudp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport)
     if (si->raddr == raddr &&
         si->lport == lport &&
 	si->rport == rport) {
-      release(&lock);
       break;
     }
     si = si->next;
   }
-  if (!si) {
-    release(&lock);
-  }
+  release(&lock);
   if (si) {
     acquire(&si->lock);
     mbufq_pushtail(&si->rxq, m);
