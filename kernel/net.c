@@ -222,7 +222,7 @@ net_tx_arp(uint16 op, uint8 dmac[ETHADDR_LEN], uint32 dip)
 {
   struct mbuf *m;
   struct arp *arphdr;
-  printf("t arp\n");
+  // printf("t arp\n");
 
   m = mbufalloc(MBUF_DEFAULT_HEADROOM);
   if (!m)

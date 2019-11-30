@@ -11,3 +11,4 @@ while True:
     print >>sys.stderr, buf
     if buf:
         sent = sock.sendto(buf, raddr)
+        print >> sent

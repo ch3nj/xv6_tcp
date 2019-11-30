@@ -90,6 +90,7 @@ bad:
 void
 sockclose(struct sock *si, int writable) {
   struct sock *pos, *next;
+  acquire(&lock);
   acquire(&si->lock);
 
   // free outstanding mbufs
@@ -98,7 +99,7 @@ sockclose(struct sock *si, int writable) {
   }
 
   // remove from sockets
-  acquire(&lock);
+  
   pos = sockets;
   if (pos->raddr == si->raddr &&
       pos->lport == si->lport &&
@@ -115,10 +116,11 @@ sockclose(struct sock *si, int writable) {
       }
     }
   }
-  release(&lock);
+  
 
   // clean up
   release(&si->lock);
+  release(&lock);
   kfree((char*)si);
 }
 
@@ -131,6 +133,7 @@ sockwrite(struct sock *si, uint64 addr, int n) {
 
   acquire(&si->lock);
   if (copyin(pr->pagetable, mbufput(m, n), addr, n) == -1) {
+    release(&si->lock);
     return -1;
   }
   net_tx_udp(m, si->raddr ,si->lport, si->rport);

@@ -230,32 +230,52 @@ int
 main(int argc, char *argv[])
 {
   int i, ret;
+  // int i;
   uint16 dport = NET_TESTS_PORT;
 
-  printf("nettests running on port %d\n", dport);
+  // printf("nettests running on port %d\n", dport);
 
-  printf("testing one ping: ");
-  ping(2000, dport, 2);
-  printf("OK\n");
+  // printf("testing one ping: ");
+  // ping(2000, dport, 2);
+  // printf("OK\n");
 
-  printf("testing single-process pings: ");
-  for (i = 0; i < 5; i++)
-    ping(2000, dport, 1);
-  printf("OK\n");
+  // printf("testing single-process pings: ");
+  // for (i = 0; i < 5; i++)
+  //   ping(2000, dport, 1);
+  // printf("OK\n");
 
   printf("testing multi-process pings: ");
-  for (i = 0; i < 10; i++){
+  for (i = 0; i < 5; i++){
     int pid = fork();
     if (pid == 0){
       ping(2000 + i + 1, dport, 1);
       exit(0);
     }
   }
-  for (i = 0; i < 10; i++){
+  for (i = 0; i < 5; i++){
     wait(&ret);
     if (ret != 0)
       exit(1);
   }
+  printf("OK\n");
+
+
+  // // printf("testing multi-process pings: ");
+  // for (i = 0; i < 20; i++){
+  //   // int pid = fork();
+
+  //   // if (pid == 0){
+  //     printf("PROCSS NUMBER: %d", i);
+  //     ping(2000 + i + 1, dport, 1);
+  //   //   exit(0);
+  //   // }
+  // }
+
+  // for (i = 0; i < 10; i++){
+  //   wait(&ret);
+  //   if (ret != 0)
+  //     exit(1);
+  // }
   printf("OK\n");
 
   printf("testing DNS\n");
