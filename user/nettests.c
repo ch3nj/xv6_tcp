@@ -222,7 +222,7 @@ dns()
   printf("d3\n");
   int cc = read(fd, ibuf, sizeof(ibuf));
 
-  
+
   if(cc < 0){
     fprintf(2, "dns: recv() failed\n");
     exit(1);
@@ -246,7 +246,7 @@ main(int argc, char *argv[])
   printf("OK\n");
 
   printf("testing single-process pings: ");
-  for (i = 0; i < 10; i++)
+  for (i = 0; i < 100; i++)
     ping(2000, dport, 1);
   printf("OK\n");
 
