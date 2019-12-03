@@ -148,7 +148,7 @@ sockread(struct sock *si, uint64 addr, int n) {
       release(&si->lock);
       return -1;
     }
-    sleep(&si->raddr, &si->lock);
+    sleep(si, &si->lock);
   }
   m = mbufq_pophead(&si->rxq);
   release(&si->lock);
@@ -172,11 +172,13 @@ sockrecvudp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport)
   // registered to handle it.
   //
   struct sock *si;
-  printf("hey\n");
   acquire(&lock);
-  printf("acq\n");
   si = sockets;
   while(si) {
+    printf("%d, %d\n", si->raddr, raddr);
+    printf("%d, %d\n", si->lport, lport);
+    printf("%d, %d\n", si->rport, rport);
+
     if (si->raddr == raddr &&
         si->lport == lport &&
 	si->rport == rport) {
@@ -185,14 +187,13 @@ sockrecvudp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport)
     si = si->next;
   }
   release(&lock);
-  printf("rel\n");
   if (si) {
     acquire(&si->lock);
     mbufq_pushtail(&si->rxq, m);
-    printf("wake");
-    wakeup(&si->raddr);
+    wakeup(si);
     release(&si->lock);
   } else {
     mbuffree(m);
   }
+  printf("done sru\n");
 }
