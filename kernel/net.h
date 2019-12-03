@@ -115,6 +115,20 @@ struct udp {
   uint16 sum;   // checksum
 };
 
+// a TCP packet header (comes after an IP header).
+struct tcp {
+  uint16 sport;   // source port
+  uint16 dport;   // destination port
+  uint32 seq;     // sequence number
+  uint32 ack;     // ack (if set)
+  uint8 offset;   // offset
+  uint8 reserved; // set to 0
+  uint16 flags;   // flags
+  uint16 winsize; // length
+  uint16 sum;     // checksum
+  uint16 urg;     // urgent pointer
+};
+
 // an ARP packet (comes after an Ethernet header).
 struct arp {
   uint16 hrd; // format of hardware address

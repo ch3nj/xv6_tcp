@@ -594,7 +594,7 @@ wakeup(void *chan)
     if(p->state == SLEEPING && p->chan == chan) {
       
       p->state = RUNNABLE;
-      printf("process %p being woken up on channel %p\n", p->pid, chan);
+      // printf("process %p being woken up on channel %p\n", p->pid, chan);
     }
     release(&p->lock);
   }
