@@ -260,7 +260,6 @@ net_rx_arp(struct mbuf *m)
 
   arphdr = mbufpullhdr(m, *arphdr);
   if (!arphdr) {
-    printf("fail 1");
     goto done;
   }
 
@@ -269,7 +268,6 @@ net_rx_arp(struct mbuf *m)
       ntohs(arphdr->pro) != ETHTYPE_IP ||
       arphdr->hln != ETHADDR_LEN ||
       arphdr->pln != sizeof(uint32)) {
-    printf("fail 2");
     goto done;
   }
 
@@ -277,7 +275,6 @@ net_rx_arp(struct mbuf *m)
   // check if our IP was solicited
   tip = ntohl(arphdr->tip); // target IP address
   if (ntohs(arphdr->op) != ARP_OP_REQUEST || tip != local_ip) {
-    printf("fail 3");
     goto done;
   }
 
@@ -319,12 +316,43 @@ net_rx_udp(struct mbuf *m, uint16 len, struct ip *iphdr)
   sip = ntohl(iphdr->ip_src);
   sport = ntohs(udphdr->sport);
   dport = ntohs(udphdr->dport);
-  printf("calling sockrecvudp\n");
   sockrecvudp(m, sip, dport, sport);
   return;
 
 fail:
-  printf("failing in netrxudp");
+  mbuffree(m);
+}
+
+// receives a TCP packet
+static void
+net_rx_tcp(struct mbuf *m, uint16 len, struct ip *iphdr)
+{
+  struct tcp *tcphdr;
+  uint32 sip;
+  uint16 sport, dport;
+  printf("r tcp\n");
+
+  tcphdr = mbufpullhdr(m, *tcphdr);
+  if (!tcphdr)
+    goto fail;
+
+  // validate lengths reported in headers
+  if (ntohs(tcphdr->winsize) != len)
+    goto fail;
+  len -= sizeof(*tcphdr);
+  if (len > m->len)
+    goto fail;
+  // minimum packet size could be larger than the payload
+  mbuftrim(m, m->len - len);
+
+  // parse the necessary fields
+  sip = ntohl(iphdr->ip_src);
+  sport = ntohs(tcphdr->sport);
+  dport = ntohs(tcphdr->dport);
+  sockrecvudp(m, sip, dport, sport);
+  return;
+
+fail:
   mbuffree(m);
 }
 
@@ -351,13 +379,18 @@ net_rx_ip(struct mbuf *m)
   // is the packet addressed to us?
   if (htonl(iphdr->ip_dst) != local_ip)
     goto fail;
-  // can only support UDP
-  if (iphdr->ip_p != IPPROTO_UDP)
+  if (iphdr->ip_p == IPPROTO_UDP) {
+    len = ntohs(iphdr->ip_len) - sizeof(*iphdr);
+    net_rx_udp(m, len, iphdr);
+    return;
+  } else if (iphdr->ip_p == IPPROTO_TCP) {
+    len = ntohs(iphdr->ip_len) - sizeof(*iphdr);
+    net_rx_tcp(m, len, iphdr);
+    return;
+  }
+  else {
     goto fail;
-
-  len = ntohs(iphdr->ip_len) - sizeof(*iphdr);
-  net_rx_udp(m, len, iphdr);
-  return;
+  }
 
 fail:
   mbuffree(m);

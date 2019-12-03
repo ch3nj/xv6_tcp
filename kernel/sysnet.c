@@ -89,44 +89,32 @@ bad:
 
 void
 sockclose(struct sock *si, int writable) {
-  printf("trying to close\n");
   struct sock *pos, *next;
   acquire(&si->lock);
-  printf("trying to close1\n");
   // free outstanding mbufs
   while(!mbufq_empty(&si->rxq)) {
     mbuffree(mbufq_pophead(&si->rxq));
   }
-  printf("trying to close2\n");
   // remove from sockets
   acquire(&lock);
-  printf("trying to close3\n");
   wakeup(&si->rxq);
-  printf("trying to close4\n");
   pos = sockets;
   if (pos->raddr == si->raddr && pos->lport == si->lport && pos->rport == si->rport) {
     sockets = pos->next;
   } else {
-    printf("in else");
     while(pos->next) {
-      printf("%p\n", pos->next);
       next = pos->next;
       if (next->raddr == si->raddr && next->lport == si->lport && next->rport == si->rport) {
-        printf("breaking");
         pos->next = next->next;
         break;
       }
       pos = pos->next;
     }
   }
-  printf("trying to close5\n");
   release(&lock);
   // clean up
-  printf("trying to close6\n");
   release(&si->lock);
-  printf("trying to close7\n");
   kfree((char*)si);
-  printf("done!");
 }
 
 int
