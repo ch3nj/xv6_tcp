@@ -119,10 +119,10 @@ e1000_transmit(struct mbuf *m)
   tx_ring[current_position].addr = (uint64)m->head;
   tx_ring[current_position].length = m->len;
   tx_ring[current_position].status = 0;
-  tx_ring[current_position].cso =  0;
+  // tx_ring[current_position].cso =  0;
   tx_ring[current_position].cmd = E1000_TXD_CMD_RS;
-  tx_ring[current_position].css = 0;
-  tx_ring[current_position].special = 0;
+  // tx_ring[current_position].css = 0;
+  // tx_ring[current_position].special = 0;
   if (m->next == 0) {
   	tx_ring[current_position].cmd |= E1000_TXD_CMD_EOP ;
   }
@@ -147,12 +147,12 @@ e1000_recv(void)
   //
   printf("REC1\n");
   acquire(&e1000_lock_rx);
-  while (1) {
-  
+  while(1) {
     int next_position = (regs[E1000_RDT] + 1)%RX_RING_SIZE;
     // struct rx_desc next_desc = rx_ring[next_position];
     if ((rx_ring[next_position].status & E1000_RXD_STAT_DD) == 0) {
     	//nothing to receive
+      printf("nothing more to receive\n");
       release(&e1000_lock_rx);
     	return;
     }
@@ -163,17 +163,15 @@ e1000_recv(void)
     struct mbuf *m = mbufalloc(rx_ring[next_position].length);
   	rx_ring[next_position].addr = (uint64)m->head;
     rx_ring[next_position].length = 0;
-    rx_ring[next_position].csum = 0;
+    // rx_ring[next_position].csum = 0;
     rx_ring[next_position].status = 0;
-    rx_ring[next_position].errors = 0;
-    rx_ring[next_position].special = 0;
+    // rx_ring[next_position].errors = 0;
+    // rx_ring[next_position].special = 0;
     rx_mbufs[next_position] = m;
 
     regs[E1000_RDT] = next_position;
   }
   release(&e1000_lock_rx);
-
-  
   printf("finished receiving\n");
   return;
 }
@@ -182,10 +180,10 @@ void
 e1000_intr(void)
 {
   printf("generating interrupt!\n");
-  regs[E1000_ICR];
+
   e1000_recv();
   // tell the e1000 we've seen this interrupt;
   // without this the e1000 won't raise any
   // further interrupts.
-  
+  regs[E1000_ICR];
 }

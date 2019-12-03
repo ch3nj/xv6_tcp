@@ -89,38 +89,44 @@ bad:
 
 void
 sockclose(struct sock *si, int writable) {
+  printf("trying to close\n");
   struct sock *pos, *next;
   acquire(&si->lock);
-
+  printf("trying to close1\n");
   // free outstanding mbufs
   while(!mbufq_empty(&si->rxq)) {
     mbuffree(mbufq_pophead(&si->rxq));
   }
-
+  printf("trying to close2\n");
   // remove from sockets
   acquire(&lock);
-  wakeup(&si->lport);
+  printf("trying to close3\n");
+  wakeup(&si->rxq);
+  printf("trying to close4\n");
   pos = sockets;
-  if (pos->raddr == si->raddr &&
-      pos->lport == si->lport &&
-  pos->rport == si->rport) {
+  if (pos->raddr == si->raddr && pos->lport == si->lport && pos->rport == si->rport) {
     sockets = pos->next;
   } else {
+    printf("in else");
     while(pos->next) {
+      printf("%p\n", pos->next);
       next = pos->next;
-      if (next->raddr == si->raddr &&
-          next->lport == si->lport &&
-      next->rport == si->rport) {
+      if (next->raddr == si->raddr && next->lport == si->lport && next->rport == si->rport) {
+        printf("breaking");
         pos->next = next->next;
         break;
       }
+      pos = pos->next;
     }
   }
+  printf("trying to close5\n");
   release(&lock);
   // clean up
+  printf("trying to close6\n");
   release(&si->lock);
+  printf("trying to close7\n");
   kfree((char*)si);
-
+  printf("done!");
 }
 
 int
@@ -137,7 +143,6 @@ sockwrite(struct sock *si, uint64 addr, int n) {
     return -1;
   }
   net_tx_udp(m, si->raddr ,si->lport, si->rport);
-  // wakeup(&si->rxq);
   release(&si->lock);
   return n;
 }
@@ -206,8 +211,9 @@ sockrecvudp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport)
     acquire(&si->lock);
     mbufq_pushtail(&si->rxq, m);
     printf("%p: waking up\n", si);
-    wakeup(&si->rxq);
     release(&si->lock);
+    wakeup(&si->rxq);
+    
     
   } else {
     mbuffree(m);
