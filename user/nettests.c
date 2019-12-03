@@ -43,8 +43,8 @@ ping(uint16 sport, uint16 dport, int attempts)
   }
 
   printf("hi4\n");
-  printf("\"%s\" : \"%s\"\n", obuf, ibuf);
-  printf("%d\n", cc);
+  // printf("\"%s\" : \"%s\"\n", obuf, ibuf);
+  // printf("%d\n", cc);
   close(fd);
   if (strcmp(obuf, ibuf) || cc != sizeof(obuf)){
     fprintf(2, "ping didn't receive correct payload\n");
@@ -241,18 +241,18 @@ main(int argc, char *argv[])
 
   // printf("nettests running on port %d\n", dport);
 
-  // printf("testing one ping: ");
-  // ping(2000, dport, 2);
-  // printf("OK\n");
+  printf("testing one ping: ");
+  ping(2000, dport, 2);
+  printf("OK\n");
 
-  // printf("testing single-process pings: ");
-  // for (i = 0; i < 10; i++)
-  //   ping(2000, dport, 1);
-  // printf("OK\n");
+  printf("testing single-process pings: ");
+  for (i = 0; i < 10; i++)
+    ping(2000, dport, 1);
+  printf("OK\n");
 
 
   printf("testing multi-process pings: ");
-  for (i = 0; i < 2; i++){
+  for (i = 0; i < 7; i++){
     int pid = fork();
     if (pid == 0){
       ping(2000 + i + 1, dport, 1);
@@ -283,7 +283,9 @@ main(int argc, char *argv[])
   //   if (ret != 0)
   //     exit(1);
   // }
-  printf("OK\n");
+  // printf("OK\n");
+
+  exit(0);
 
   printf("testing DNS\n");
   dns();

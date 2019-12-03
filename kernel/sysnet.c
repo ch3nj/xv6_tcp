@@ -99,6 +99,7 @@ sockclose(struct sock *si, int writable) {
 
   // remove from sockets
   acquire(&lock);
+  wakeup(&si->lport);
   pos = sockets;
   if (pos->raddr == si->raddr &&
       pos->lport == si->lport &&
@@ -119,10 +120,12 @@ sockclose(struct sock *si, int writable) {
   // clean up
   release(&si->lock);
   kfree((char*)si);
+
 }
 
 int
 sockwrite(struct sock *si, uint64 addr, int n) {
+  printf("calling sockwrite\n");
   struct mbuf *m;
   struct proc *pr = myproc();
 
@@ -130,6 +133,7 @@ sockwrite(struct sock *si, uint64 addr, int n) {
   m = mbufalloc(MBUF_DEFAULT_HEADROOM);
 
   if (copyin(pr->pagetable, mbufput(m, n), addr, n) == -1) {
+    release(&si->lock);
     return -1;
   }
   net_tx_udp(m, si->raddr ,si->lport, si->rport);
@@ -143,26 +147,33 @@ sockread(struct sock *si, uint64 addr, int n) {
   printf("sockread\n");
   struct mbuf *m;
   struct proc *pr = myproc();
-  int i;
+  int i = n;
 
   acquire(&si->lock);
-  printf("acquired si lock\n");
+  printf("%p: acquired si lock\n", si);
   while(mbufq_empty(&si->rxq)) {
     if(myproc()->killed){
       release(&si->lock);
       return -1;
     }
-    printf("sleeping\n");
-    sleep(&si->lport, &si->lock);
+    printf("%p: sleeping\n", si);
+    sleep(&si->rxq, &si->lock);
+    printf("%p: woken up\n", si);
   }
+
   m = mbufq_pophead(&si->rxq);
   release(&si->lock);
-  for(i = 0; i < n; i++){
-    if(m->len == 0 || copyout(pr->pagetable, addr + i, m->head, 1) == -1)
-      break;
-    mbufpull(m, 1);
+
+  if (n > m->len) {
+    copyout(pr->pagetable, addr, m->head, m->len);
+    i = m->len;
+  } else {
+    copyout(pr->pagetable, addr, m->head, n);
   }
-  printf("finish sockread\n");
+
+  mbuffree(m);
+
+  printf("%p: finish sockread for \n", si);
   return i;
 }
 
@@ -189,12 +200,13 @@ sockrecvudp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport)
     }
     si = si->next;
   }
+  // printf("%p", si);
   release(&lock);
   if (si) {
     acquire(&si->lock);
     mbufq_pushtail(&si->rxq, m);
-    printf("waking up");
-    wakeup(&si->lport);
+    printf("%p: waking up\n", si);
+    wakeup(&si->rxq);
     release(&si->lock);
     
   } else {

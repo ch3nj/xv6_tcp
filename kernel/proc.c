@@ -559,6 +559,7 @@ sleep(void *chan, struct spinlock *lk)
   // guaranteed that we won't miss any wakeup
   // (wakeup locks p->lock),
   // so it's okay to release lk.
+  printf("process %p about to sleep on channel %p with lock %p\n", p->pid, chan, lk);
   if(lk != &p->lock){  //DOC: sleeplock0
     acquire(&p->lock);  //DOC: sleeplock1
     release(lk);
@@ -586,10 +587,11 @@ void
 wakeup(void *chan)
 {
   struct proc *p;
-
+  // printf("process %p about to wakeup on channel %p\n", myproc()->pid, chan);
   for(p = proc; p < &proc[NPROC]; p++) {
     acquire(&p->lock);
     if(p->state == SLEEPING && p->chan == chan) {
+      printf("process %p being woken up on channel %p\n", p->pid, chan);
       p->state = RUNNABLE;
     }
     release(&p->lock);

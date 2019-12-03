@@ -182,6 +182,7 @@ static void
 net_tx_ip(struct mbuf *m, uint8 proto, uint32 dip)
 {
   struct ip *iphdr;
+  printf("t ip\n");
 
   // push the IP header
   iphdr = mbufpushhdr(m, *iphdr);
@@ -204,6 +205,7 @@ net_tx_udp(struct mbuf *m, uint32 dip,
            uint16 sport, uint16 dport)
 {
   struct udp *udphdr;
+  printf("t udp\n");
 
   // put the UDP header
   udphdr = mbufpushhdr(m, *udphdr);
@@ -222,7 +224,7 @@ net_tx_arp(uint16 op, uint8 dmac[ETHADDR_LEN], uint32 dip)
 {
   struct mbuf *m;
   struct arp *arphdr;
-  // printf("t arp\n");
+  printf("t arp\n");
 
   m = mbufalloc(MBUF_DEFAULT_HEADROOM);
   if (!m)
@@ -317,7 +319,7 @@ net_rx_udp(struct mbuf *m, uint16 len, struct ip *iphdr)
   sip = ntohl(iphdr->ip_src);
   sport = ntohs(udphdr->sport);
   dport = ntohs(udphdr->dport);
-  printf("calling sockrecvudp");
+  printf("calling sockrecvudp\n");
   sockrecvudp(m, sip, dport, sport);
   return;
 
