@@ -128,20 +128,20 @@ struct tcp {
   uint16 urg;               // urgent pointer
 };
 
-#define CLOSED   0x0001
-#define LISTEN   0x0002
-#define SYN_SENT 0x0004
-#define SYN_RECV 0x0008
-#define ESTAB    0x0010
-#define FIN_W1   0x0020
-#define FIN_W2   0x0040
-#define CLOSING  0x0080
-#define TIME_W   0x0100
-#define CLOSE_W  0x0200
-#define LAST_ACK 0x0400
+#define CLOSED   1
+#define LISTEN   2
+#define SYN_SENT 3
+#define SYN_RECV 4
+#define ESTAB    5
+#define FIN_W1   6
+#define FIN_W2   7
+#define CLOSING  8
+#define TIME_W   9
+#define CLOSE_W  10
+#define LAST_ACK 11
 
 struct tcp_state {
-  uint16 state;
+  int state;
   uint32 snd_una;
   uint32 snd_nxt;
   uint16 snd_wnd;

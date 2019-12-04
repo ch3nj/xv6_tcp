@@ -25,6 +25,7 @@ struct sock {
   uint8 type;        // 0 for UDP, 1 for TCP
   struct spinlock lock; // protects the rxq
   struct mbufq rxq;  // a queue of packets waiting to be received
+  struct tcp_state state; // unused for UDP
 };
 
 static struct spinlock lock;
@@ -53,6 +54,7 @@ sockalloc(struct file **f, uint32 raddr, uint16 lport, uint16 rport, uint8 type)
   si->lport = lport;
   si->rport = rport;
   si->type = type;
+  if (type == SOCK_TYPE_TCP)
   initlock(&si->lock, "sock");
   mbufq_init(&si->rxq);
   (*f)->type = FD_SOCK;
