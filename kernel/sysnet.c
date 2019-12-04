@@ -138,7 +138,6 @@ sockwrite(struct sock *si, uint64 addr, int n) {
   if (si->type == SOCK_TYPE_UDP) {
     printf("going to udp");
     net_tx_udp(m, si->raddr ,si->lport, si->rport);
-
   } else {
     net_tx_tcp(m, si->raddr ,si->lport, si->rport);
   }

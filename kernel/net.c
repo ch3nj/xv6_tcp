@@ -361,11 +361,10 @@ net_rx_tcp(struct mbuf *m, uint16 len, struct ip *iphdr)
   if (lines < 5)
     goto fail;
 
-  uint8 options[(lines-5) << 2];
-  options = mbufpull(m, *options); // do nothing with these for now
+  mbufpullhdr(m, (uint16)((lines - 5) << 2)); // do nothing with these for now
 
   len -= sizeof(*tcphdr);
-  len -= sizeof(*options); // does this actually work
+  len -= ((lines - 5) << 2); // does this actually work
   if (len > m->len)
     goto fail;
 

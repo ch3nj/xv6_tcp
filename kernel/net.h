@@ -147,7 +147,7 @@ struct tcp_state {
   uint16 snd_wnd;
   uint32 rcv_nxt;
   uint16 rcv_wnd;
-}
+};
 
 // a UDP packet header (comes after an IP header).
 struct udp {
