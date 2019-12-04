@@ -460,9 +460,9 @@ net_rx_tcp(struct mbuf *m, uint16 len, struct ip *iphdr)
   info.syn = syn;
   info.fin = fin;
 
-  if (ack == 0) { 
-    panic("no ack bit set!");
-  }
+  // if (ack == 0) { 
+  //   panic("no ack bit set!");
+  // }
 
   sockrecvtcp(m, sip, dport, sport, &info);
   return;
