@@ -89,49 +89,36 @@ bad:
 
 void
 sockclose(struct sock *si, int writable) {
-  printf("trying to close\n");
   struct sock *pos, *next;
   acquire(&si->lock);
-  printf("trying to close1\n");
   // free outstanding mbufs
   while(!mbufq_empty(&si->rxq)) {
     mbuffree(mbufq_pophead(&si->rxq));
   }
-  printf("trying to close2\n");
   // remove from sockets
   acquire(&lock);
-  printf("trying to close3\n");
   wakeup(&si->rxq);
-  printf("trying to close4\n");
   pos = sockets;
   if (pos->raddr == si->raddr && pos->lport == si->lport && pos->rport == si->rport) {
     sockets = pos->next;
   } else {
-    printf("in else");
     while(pos->next) {
-      printf("%p\n", pos->next);
       next = pos->next;
       if (next->raddr == si->raddr && next->lport == si->lport && next->rport == si->rport) {
-        printf("breaking");
         pos->next = next->next;
         break;
       }
       pos = pos->next;
     }
   }
-  printf("trying to close5\n");
   release(&lock);
   // clean up
-  printf("trying to close6\n");
   release(&si->lock);
-  printf("trying to close7\n");
   kfree((char*)si);
-  printf("done!");
 }
 
 int
 sockwrite(struct sock *si, uint64 addr, int n) {
-  printf("calling sockwrite\n");
   struct mbuf *m;
   struct proc *pr = myproc();
 
@@ -149,21 +136,17 @@ sockwrite(struct sock *si, uint64 addr, int n) {
 
 int
 sockread(struct sock *si, uint64 addr, int n) {
-  printf("sockread\n");
   struct mbuf *m;
   struct proc *pr = myproc();
   int i = n;
 
   acquire(&si->lock);
-  printf("%p: acquired si lock\n", si);
   while(mbufq_empty(&si->rxq)) {
     if(myproc()->killed){
       release(&si->lock);
       return -1;
     }
-    printf("%p: sleeping\n", si);
     sleep(&si->rxq, &si->lock);
-    printf("%p: woken up\n", si);
   }
 
   m = mbufq_pophead(&si->rxq);
@@ -178,7 +161,6 @@ sockread(struct sock *si, uint64 addr, int n) {
 
   mbuffree(m);
 
-  printf("%p: finish sockread for \n", si);
   return i;
 }
 
@@ -193,7 +175,6 @@ sockrecvudp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport)
   // any sleeping reader. Free the mbuf if there are no sockets
   // registered to handle it.
   //
-  printf("sockrecvudp\n");
   struct sock *si;
   acquire(&lock);
   si = sockets;
@@ -210,12 +191,16 @@ sockrecvudp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport)
   if (si) {
     acquire(&si->lock);
     mbufq_pushtail(&si->rxq, m);
-    printf("%p: waking up\n", si);
     release(&si->lock);
     wakeup(&si->rxq);
-    
-    
+
+
   } else {
     mbuffree(m);
   }
+}
+
+void
+sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport) {
+  
 }

@@ -107,6 +107,29 @@ struct ip {
   (((uint32)a << 24) | ((uint32)b << 16) | \
    ((uint32)c << 8) | (uint32)d)
 
+#define TCP_URG 0x04
+#define TCP_ACK 0x08
+#define TCP_PSH 0x10
+#define TCP_RST 0x20
+#define TCP_SYN 0x40
+#define TCP_FIN 0x80
+#define TCP_MAXOPTS 20 // must be a multiple of 4
+#define TCP_OFFSET (5 + TCP_MAXOPTS/4)
+
+// a TCP packet header (comes after an IP header).
+// options not included in this struct
+struct tcp {
+  uint16 sport;             // source port
+  uint16 dport;             // destination port
+  uint32 seqnum;            // sequence number
+  uint32 acknum;            // acknowledgement number
+  uint8 offset;             // data offset (must be 4 bits)
+  uint8 flags;              // flags
+  uint16 window;            // window
+  uint16 sum;               // checksum
+  uint16 urg;               // urgent pointer
+};
+
 // a UDP packet header (comes after an IP header).
 struct udp {
   uint16 sport; // source port
@@ -143,14 +166,14 @@ struct dns {
   uint8 rd: 1;  // recursion desired
   uint8 tc: 1;  // truncated
   uint8 aa: 1;  // authoritive
-  uint8 opcode: 4; 
+  uint8 opcode: 4;
   uint8 qr: 1;  // query/response
   uint8 rcode: 4; // response code
   uint8 cd: 1;  // checking disabled
   uint8 ad: 1;  // authenticated data
-  uint8 z:  1;  
+  uint8 z:  1;
   uint8 ra: 1;  // recursion available
-  
+
   uint16 qdcount; // number of question entries
   uint16 ancount; // number of resource records in answer section
   uint16 nscount; // number of NS resource records in authority section
@@ -161,7 +184,7 @@ struct dns_question {
   uint16 qtype;
   uint16 qclass;
 } __attribute__((packed));
-  
+
 #define ARECORD (0x0001)
 #define QCLASS  (0x0001)
 
