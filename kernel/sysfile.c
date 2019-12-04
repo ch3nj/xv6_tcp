@@ -60,7 +60,7 @@ sys_connect()
   uint32 raddr;
   uint32 rport;
   uint32 lport;
-  uint8  type;
+  uint32  type;
 
   if (argint(0, (int*)&raddr) < 0 ||
       argint(1, (int*)&lport) < 0 ||
@@ -68,6 +68,7 @@ sys_connect()
       argint(3, (int*)&type) < 0) {
     return -1;
   }
+  printf("LPORT: %d\n", lport);
 
   if(sockalloc(&f, raddr, lport, rport, type) < 0)
     return -1;
