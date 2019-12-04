@@ -124,27 +124,30 @@ sockclose(struct sock *si, int writable) {
 
 int
 sockwrite(struct sock *si, uint64 addr, int n) {
-  if (si->type == SOCK_TYPE_UDP) {
-    struct mbuf *m;
-    struct proc *pr = myproc();
+  struct mbuf *m;
+  struct proc *pr = myproc();
 
-    acquire(&si->lock);
-    m = mbufalloc(MBUF_DEFAULT_HEADROOM);
+  acquire(&si->lock);
+  m = mbufalloc(MBUF_DEFAULT_HEADROOM);
 
-    if (copyin(pr->pagetable, mbufput(m, n), addr, n) == -1) {
-      release(&si->lock);
-      return -1;
-    }
-    net_tx_udp(m, si->raddr ,si->lport, si->rport);
+  if (copyin(pr->pagetable, mbufput(m, n), addr, n) == -1) {
     release(&si->lock);
-    return n;
+    return -1;
   }
+  printf("SOCKET TYPE: %d", si->type);
+  if (si->type == SOCK_TYPE_UDP) {
+    printf("going to udp");
+    net_tx_udp(m, si->raddr ,si->lport, si->rport);
 
+  } else {
+    net_tx_tcp(m, si->raddr ,si->lport, si->rport);
+  }
+  release(&si->lock);
+  return n;
 }
 
 int
 sockread(struct sock *si, uint64 addr, int n) {
-  if (si->type == SOCK_TYPE_UDP) {
     struct mbuf *m;
     struct proc *pr = myproc();
     int i = n;
@@ -171,7 +174,6 @@ sockread(struct sock *si, uint64 addr, int n) {
     mbuffree(m);
 
     return i;
-  }
 
 }
 

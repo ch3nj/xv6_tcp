@@ -65,6 +65,7 @@ int             writei(struct inode*, int, uint64, uint, uint);
 
 // net.c
 void            net_rx(struct mbuf*);
+void            net_tx_tcp(struct mbuf*, uint32, uint16, uint16);
 void            net_tx_udp(struct mbuf*, uint32, uint16, uint16);
 
 // sysnet.c
