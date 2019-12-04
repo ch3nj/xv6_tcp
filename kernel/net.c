@@ -218,6 +218,21 @@ net_tx_udp(struct mbuf *m, uint32 dip,
   net_tx_ip(m, IPPROTO_UDP, dip);
 }
 
+// sends a TCP packet
+static void
+next_rx_tcp(struct mbuf *m, uint16 len, struct ip *iphdr) {
+  struct tcp *tcphdr;
+  printf("t tcp\n");
+
+  // put the TCP header
+  tcphdr = mbufpushhdr(m, *tcphdr);
+  tcphdr->sport = htons(sport);
+  tcphdr->dport = htons(dport);
+
+  // now on to the IP layer
+  net_tx_ip(m, IPPROTO_TCP, dip);
+}
+
 // sends an ARP packet
 static int
 net_tx_arp(uint16 op, uint8 dmac[ETHADDR_LEN], uint32 dip)
