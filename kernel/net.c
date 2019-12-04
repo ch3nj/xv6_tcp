@@ -248,7 +248,7 @@ net_tx_tcp(struct mbuf *m, uint32 dip, uint16 sport, uint16 dport, struct tcp_st
       tcphdr->flags = TCP_SYN;
       tcphdr->window = tcp.rcv_wnd;
       tcphdr->sum = 0;
-      tcphdr->urg = 0;
+      tcphdr->urgptr = 0;
       tcphdr->sum = tcp_checksum(m);
       break;
     case TS_LISTEN:
@@ -263,7 +263,7 @@ net_tx_tcp(struct mbuf *m, uint32 dip, uint16 sport, uint16 dport, struct tcp_st
       tcphdr->flags = TCP_ACK;
       tcphdr->window = tcp.rcv_wnd;
       tcphdr->sum = 0;
-      tcphdr->urg = 0;
+      tcphdr->urgptr = 0;
       tcphdr->sum = tcp_checksum(m);
       break;
     case TS_SYN_RECV:
@@ -277,7 +277,7 @@ net_tx_tcp(struct mbuf *m, uint32 dip, uint16 sport, uint16 dport, struct tcp_st
       tcphdr->flags = TCP_ACK;
       tcphdr->window = tcp.rcv_wnd;
       tcphdr->sum = 0;
-      tcphdr->urg = 0;
+      tcphdr->urgptr = 0;
       tcphdr->sum = tcp_checksum(m);
       break;
     default:
@@ -404,9 +404,9 @@ net_rx_tcp(struct mbuf *m, uint16 len, struct ip *iphdr)
 {
   struct tcp *tcphdr;
   uint32 sip, seqnum, acknum;
-  uint16 sport, dport; 
+  uint16 sport, dport;
   // uint16 window, sum, urgptr;
-  // uint8 offset, 
+  // uint8 offset,
   uint8 flags, ack, syn, fin;
   // uint8 urg,  psh, rst;
   printf("r tcp\n");
@@ -460,7 +460,7 @@ net_rx_tcp(struct mbuf *m, uint16 len, struct ip *iphdr)
   info.syn = syn;
   info.fin = fin;
 
-  // if (ack == 0) { 
+  // if (ack == 0) {
   //   panic("no ack bit set!");
   // }
 
