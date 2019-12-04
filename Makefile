@@ -198,6 +198,9 @@ SERVERPORT = $(shell expr `id -u` % 5000 + 25099)
 server:
 	python2.7 server.py $(SERVERPORT)
 
+tcpserver:
+	python2.7 tcpserver.py $(SERVERPORT)
+
 ping:
 	python2.7 ping.py $(FWDPORT)
 
