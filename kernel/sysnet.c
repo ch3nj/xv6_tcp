@@ -15,7 +15,8 @@
 #include "net.h"
 
 #define SOCK_TYPE_UDP 0
-#define SOCK_TYPE_TCP 1
+#define SOCK_TYPE_TCP_CLIENT 1
+#define SOCK_TYPE_TCP_SERVER 2
 
 struct sock {
   struct sock *next; // the next socket in the list
@@ -25,7 +26,7 @@ struct sock {
   uint8 type;        // 0 for UDP, 1 for TCP
   struct spinlock lock; // protects the rxq
   struct mbufq rxq;  // a queue of packets waiting to be received
-  struct tcp_state state; // unused for UDP
+  struct tcp_state tcp; // unused for UDP
 };
 
 static struct spinlock lock;
@@ -38,7 +39,7 @@ sockinit(void)
 }
 
 int
-sockalloc(struct file **f, uint32 raddr, uint32 lport, uint32 rport, uint8 type)
+sockalloc(struct file **f, uint32 raddr, uint32 lport, uint32 rport, uint32 type)
 {
   struct sock *si, *pos;
 
@@ -54,24 +55,19 @@ sockalloc(struct file **f, uint32 raddr, uint32 lport, uint32 rport, uint8 type)
   si->lport = lport;
   si->rport = rport;
   si->type = type;
-  printf("break0\n");
   initlock(&si->lock, "sock");
   mbufq_init(&si->rxq);
   (*f)->type = FD_SOCK;
   (*f)->readable = 1;
   (*f)->writable = 1;
   (*f)->sock = si;
-  printf("break1\n");
   // add to list of sockets
   acquire(&lock);
-  printf("break2\n");
   pos = sockets;
-  printf("ALLOCATING: %d, %d, %d", raddr, lport, rport);
   while (pos) {
     if (pos->raddr == raddr &&
         pos->lport == lport &&
-	pos->rport == rport) {
-
+	      pos->rport == rport) {
       release(&lock);
       goto bad;
     }
@@ -80,7 +76,29 @@ sockalloc(struct file **f, uint32 raddr, uint32 lport, uint32 rport, uint8 type)
   si->next = sockets;
   sockets = si;
   release(&lock);
-  printf("finished alloc\n");
+
+  // do we need locking here?
+  if (type == SOCK_TYPE_TCP_CLIENT || type == SOCK_TYPE_TCP_SERVER) {
+    // create random initial sequence number
+    // uint32 iss = rand() & 0xff;
+    // iss |= (rand() & 0xff) << 8;
+    // iss |= (rand() & 0xff) << 16;
+    // iss |= (rand() & 0xff) << 24;
+    uint32 iss = 0;
+    si->tcp.iss = iss;
+    si->tcp.snd_una = iss + 1;
+    si->tcp.snd_nxt = iss + 1;
+    si->tcp.snd_wnd = TCP_WINDOW;
+  }
+  if (type == SOCK_TYPE_TCP_CLIENT) {
+    si->tcp.state = TS_SEND_SYN;
+    struct mbuf *m = mbufalloc(MBUF_DEFAULT_HEADROOM);
+    net_tx_tcp(m, si->raddr, si->lport, si->rport, si->tcp);
+    si->tcp.state = TS_SYN_SENT;
+  }
+  if (type == SOCK_TYPE_TCP_SERVER) {
+    si->tcp.state = TS_LISTEN;
+  }
   return 0;
 
 bad:
@@ -146,7 +164,7 @@ sockwrite(struct sock *si, uint64 addr, int n) {
     printf("going to udp");
     net_tx_udp(m, si->raddr ,si->lport, si->rport);
   } else {
-    net_tx_tcp(m, si->raddr ,si->lport, si->rport);
+    net_tx_tcp(m, si->raddr ,si->lport, si->rport, si->tcp);
   }
   release(&si->lock);
   return n;

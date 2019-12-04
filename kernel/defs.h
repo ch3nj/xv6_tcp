@@ -10,6 +10,7 @@ struct stat;
 struct superblock;
 struct mbuf;
 struct sock;
+struct tcp_state;
 
 // bio.c
 void            binit(void);
@@ -65,12 +66,12 @@ int             writei(struct inode*, int, uint64, uint, uint);
 
 // net.c
 void            net_rx(struct mbuf*);
-void            net_tx_tcp(struct mbuf*, uint32, uint16, uint16);
+void            net_tx_tcp(struct mbuf*, uint32, uint16, uint16, struct tcp_state);
 void            net_tx_udp(struct mbuf*, uint32, uint16, uint16);
 
 // sysnet.c
 void            sockinit(void);
-int             sockalloc(struct file **, uint32, uint32, uint32, uint8);
+int             sockalloc(struct file **, uint32, uint32, uint32, uint32);
 void            sockclose(struct sock*, int);
 int             sockread(struct sock*, uint64, int);
 int             sockwrite(struct sock*, uint64, int);
