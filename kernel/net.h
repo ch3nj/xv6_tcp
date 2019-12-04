@@ -107,14 +107,12 @@ struct ip {
   (((uint32)a << 24) | ((uint32)b << 16) | \
    ((uint32)c << 8) | (uint32)d)
 
-#define TCP_URG 0x04
-#define TCP_ACK 0x08
-#define TCP_PSH 0x10
-#define TCP_RST 0x20
-#define TCP_SYN 0x40
-#define TCP_FIN 0x80
-#define TCP_MAXOPTS 20 // must be a multiple of 4
-#define TCP_OFFSET (5 + TCP_MAXOPTS/4)
+#define TCP_URG 0x20
+#define TCP_ACK 0x10
+#define TCP_PSH 0x08
+#define TCP_RST 0x04
+#define TCP_SYN 0x02
+#define TCP_FIN 0x01
 
 // a TCP packet header (comes after an IP header).
 // options not included in this struct

@@ -342,7 +342,9 @@ net_rx_tcp(struct mbuf *m, uint16 len, struct ip *iphdr)
   // TODO: validate TCP checksum
 
   // get options
-  uint8 lines = (ntohs)
+  uint8 lines = (tcphdr->offset & 0x0F);
+  if (lines < 5)
+    goto fail;
 
   len -= sizeof(*tcphdr);
   if (len > m->len)
