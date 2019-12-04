@@ -254,6 +254,53 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
   if (si) {
     acquire(&si->lock);
     state = si->tcp;
+    switch (state.state)
+    {
+      case TS_SEND_SYN:
+
+        break
+      case TS_LISTEN:
+
+        break
+      case TS_SYN_SENT:
+
+        break
+      case TS_SYN_RECV:
+
+        break
+      case TS_ESTAB:
+
+        break
+      case TS_SEND_FIN:
+
+        break
+      case TS_FIN_W1:
+
+        break
+      case TS_FIN_W2:
+
+        break
+      case TS_CLOSING:
+
+        break
+      case TS_TIME_W:
+
+        break
+      case TS_CLOSE_W:
+
+        break
+      case TS_LAST_ACK:
+
+        break
+      default:
+        goto fail;
+        break;
+    }
+
+
+
+
+
     if (info->syn == 1) {
       //syn
       if (info->ack == 1) {
