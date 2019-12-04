@@ -219,9 +219,8 @@ net_tx_udp(struct mbuf *m, uint32 dip,
 }
 
 // sends a TCP packet
-static void
-next_rx_tcp(struct mbuf *m, uint32 dip,
-           uint16 sport, uint16 dport) {
+void
+net_tx_tcp(struct mbuf *m, uint32 dip, uint16 sport, uint16 dport) {
   struct tcp *tcphdr;
   printf("t tcp\n");
 

@@ -53,17 +53,19 @@ fdalloc(struct file *f)
 }
 
 uint64
-sys_connect(uint8 type)
+sys_connect()
 {
   struct file *f;
   int fd;
   uint32 raddr;
   uint32 rport;
   uint32 lport;
+  uint8  type;
 
   if (argint(0, (int*)&raddr) < 0 ||
       argint(1, (int*)&lport) < 0 ||
-      argint(2, (int*)&rport) < 0) {
+      argint(2, (int*)&rport) < 0 || 
+      argint(3, (int*)&type) < 0) {
     return -1;
   }
 
