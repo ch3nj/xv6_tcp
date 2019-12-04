@@ -268,7 +268,7 @@ net_tx_tcp(struct mbuf *m, uint32 dip, uint16 sport, uint16 dport, struct tcp_st
     case TS_SYN_RECV:
       goto fail;
       break;
-    case ESTAB:
+    case TS_ESTAB:
       printf("sending packet from %d to %d\n", sport, dport);
       tcphdr->seqnum = htonl(tcp.snd_nxt);
       tcphdr->acknum = tcp.rcv_nxt;
