@@ -2,6 +2,10 @@
 // packet buffer management
 //
 
+#define SOCK_TYPE_UDP 0
+#define SOCK_TYPE_TCP_CLIENT 1
+#define SOCK_TYPE_TCP_SERVER 2
+
 #define MBUF_SIZE              2048
 #define MBUF_DEFAULT_HEADROOM  128
 
@@ -128,25 +132,36 @@ struct tcp {
   uint16 urgptr;               // urgent pointer
 };
 
-#define CLOSED   1
-#define LISTEN   2
-#define SYN_SENT 3
-#define SYN_RECV 4
-#define ESTAB    5
-#define FIN_W1   6
-#define FIN_W2   7
-#define CLOSING  8
-#define TIME_W   9
-#define CLOSE_W  10
-#define LAST_ACK 11
+#define TS_SEND_SYN 1
+#define TS_LISTEN   2
+#define TS_SYN_SENT 3
+#define TS_SYN_RECV 4
+#define TS_ESTAB    5
+#define TS_FIN_W1   6
+#define TS_FIN_W2   7
+#define TS_CLOSING  8
+#define TS_TIME_W   9
+#define TS_CLOSE_W  10
+#define TS_LAST_ACK 11
+
+#define TCP_WINDOW ((1 << 16) - 1)
 
 struct tcp_state {
   int state;
+
+  uint32 iss;
+  uint32 irs;
+
   uint32 snd_una;
   uint32 snd_nxt;
   uint16 snd_wnd;
+  uint16 snd_up;
+  uint32 snd_wl1;
+  uint32 snd_wl2;
+
   uint32 rcv_nxt;
   uint16 rcv_wnd;
+  uint16 rcv_up;
 };
 
 struct tcp_info {
