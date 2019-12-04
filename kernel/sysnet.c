@@ -14,11 +14,15 @@
 #include "file.h"
 #include "net.h"
 
+#define SOCK_TYPE_UDP 0
+#define SOCK_TYPE_TCP 1
+
 struct sock {
   struct sock *next; // the next socket in the list
   uint32 raddr;      // the remote IPv4 address
-  uint16 lport;      // the local UDP port number
-  uint16 rport;      // the remote UDP port number
+  uint16 lport;      // the local port number
+  uint16 rport;      // the remote port number
+  uint8 type;        // 0 for UDP, 1 for TCP
   struct spinlock lock; // protects the rxq
   struct mbufq rxq;  // a queue of packets waiting to be received
 };
@@ -33,7 +37,7 @@ sockinit(void)
 }
 
 int
-sockalloc(struct file **f, uint32 raddr, uint16 lport, uint16 rport)
+sockalloc(struct file **f, uint32 raddr, uint16 lport, uint16 rport, uint8 type)
 {
   struct sock *si, *pos;
 
@@ -48,6 +52,7 @@ sockalloc(struct file **f, uint32 raddr, uint16 lport, uint16 rport)
   si->raddr = raddr;
   si->lport = lport;
   si->rport = rport;
+  si->type = type;
   initlock(&si->lock, "sock");
   mbufq_init(&si->rxq);
   (*f)->type = FD_SOCK;
@@ -119,49 +124,55 @@ sockclose(struct sock *si, int writable) {
 
 int
 sockwrite(struct sock *si, uint64 addr, int n) {
-  struct mbuf *m;
-  struct proc *pr = myproc();
+  if (si->type == SOCK_TYPE_UDP) {
+    struct mbuf *m;
+    struct proc *pr = myproc();
 
-  acquire(&si->lock);
-  m = mbufalloc(MBUF_DEFAULT_HEADROOM);
+    acquire(&si->lock);
+    m = mbufalloc(MBUF_DEFAULT_HEADROOM);
 
-  if (copyin(pr->pagetable, mbufput(m, n), addr, n) == -1) {
+    if (copyin(pr->pagetable, mbufput(m, n), addr, n) == -1) {
+      release(&si->lock);
+      return -1;
+    }
+    net_tx_udp(m, si->raddr ,si->lport, si->rport);
     release(&si->lock);
-    return -1;
+    return n;
   }
-  net_tx_udp(m, si->raddr ,si->lport, si->rport);
-  release(&si->lock);
-  return n;
+  
 }
 
 int
 sockread(struct sock *si, uint64 addr, int n) {
-  struct mbuf *m;
-  struct proc *pr = myproc();
-  int i = n;
+  if (si->type == SOCK_TYPE_UDP) {
+    struct mbuf *m;
+    struct proc *pr = myproc();
+    int i = n;
 
-  acquire(&si->lock);
-  while(mbufq_empty(&si->rxq)) {
-    if(myproc()->killed){
-      release(&si->lock);
-      return -1;
+    acquire(&si->lock);
+    while(mbufq_empty(&si->rxq)) {
+      if(myproc()->killed){
+        release(&si->lock);
+        return -1;
+      }
+      sleep(&si->rxq, &si->lock);
     }
-    sleep(&si->rxq, &si->lock);
+
+    m = mbufq_pophead(&si->rxq);
+    release(&si->lock);
+
+    if (n > m->len) {
+      copyout(pr->pagetable, addr, m->head, m->len);
+      i = m->len;
+    } else {
+      copyout(pr->pagetable, addr, m->head, n);
+    }
+
+    mbuffree(m);
+
+    return i;
   }
 
-  m = mbufq_pophead(&si->rxq);
-  release(&si->lock);
-
-  if (n > m->len) {
-    copyout(pr->pagetable, addr, m->head, m->len);
-    i = m->len;
-  } else {
-    copyout(pr->pagetable, addr, m->head, n);
-  }
-
-  mbuffree(m);
-
-  return i;
 }
 
 // called by protocol handler layer to deliver UDP packets
@@ -193,8 +204,6 @@ sockrecvudp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport)
     mbufq_pushtail(&si->rxq, m);
     release(&si->lock);
     wakeup(&si->rxq);
-
-
   } else {
     mbuffree(m);
   }
