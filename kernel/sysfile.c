@@ -53,7 +53,7 @@ fdalloc(struct file *f)
 }
 
 uint64
-sys_connect(void)
+sys_connect(uint8 type)
 {
   struct file *f;
   int fd;
@@ -67,7 +67,7 @@ sys_connect(void)
     return -1;
   }
 
-  if(sockalloc(&f, raddr, lport, rport) < 0)
+  if(sockalloc(&f, raddr, lport, rport, type) < 0)
     return -1;
   if((fd=fdalloc(f)) < 0){
     fileclose(f);

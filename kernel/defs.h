@@ -69,11 +69,12 @@ void            net_tx_udp(struct mbuf*, uint32, uint16, uint16);
 
 // sysnet.c
 void            sockinit(void);
-int             sockalloc(struct file **, uint32, uint16, uint16);
+int             sockalloc(struct file **, uint32, uint16, uint16, uint8);
 void            sockclose(struct sock*, int);
 int             sockread(struct sock*, uint64, int);
 int             sockwrite(struct sock*, uint64, int);
 void            sockrecvudp(struct mbuf*, uint32, uint16, uint16);
+void            sockrecvtcp(struct mbuf*, uint32, uint16, uint16);
 
 // ramdisk.c
 void            ramdiskinit(void);

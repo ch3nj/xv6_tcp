@@ -342,7 +342,7 @@ net_rx_tcp(struct mbuf *m, uint16 len, struct ip *iphdr)
   // TODO: validate TCP checksum
 
   // get options
-  uint8 lines = (ntohs)
+  // uint8 lines = (ntohs)
 
   len -= sizeof(*tcphdr);
   if (len > m->len)
@@ -355,8 +355,8 @@ net_rx_tcp(struct mbuf *m, uint16 len, struct ip *iphdr)
 
   // parse the necessary fields
   sip = ntohl(iphdr->ip_src);
-  sport = ntohs(udphdr->sport);
-  dport = ntohs(udphdr->dport);
+  sport = ntohs(tcphdr->sport);
+  dport = ntohs(tcphdr->dport);
   sockrecvtcp(m, sip, dport, sport);
   return;
 
