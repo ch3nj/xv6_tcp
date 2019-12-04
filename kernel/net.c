@@ -346,12 +346,15 @@ net_rx_tcp(struct mbuf *m, uint16 len, struct ip *iphdr)
   if (lines < 5)
     goto fail;
 
+  uint8 options[(lines-5) << 2];
+  options = mbufpull(m, *options); // do nothing with these for now
+
   len -= sizeof(*tcphdr);
+  len -= sizeof(*options); // does this actually work
   if (len > m->len)
     goto fail;
 
   mbuftrim(m, m->len - len);
-
 
   // minimum packet size could be larger than the payload
 

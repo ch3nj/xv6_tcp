@@ -128,6 +128,27 @@ struct tcp {
   uint16 urg;               // urgent pointer
 };
 
+#define CLOSED   0x0001
+#define LISTEN   0x0002
+#define SYN_SENT 0x0004
+#define SYN_RECV 0x0008
+#define ESTAB    0x0010
+#define FIN_W1   0x0020
+#define FIN_W2   0x0040
+#define CLOSING  0x0080
+#define TIME_W   0x0100
+#define CLOSE_W  0x0200
+#define LAST_ACK 0x0400
+
+struct tcp_state {
+  uint16 state;
+  uint32 snd_una;
+  uint32 snd_nxt;
+  uint16 snd_wnd;
+  uint32 rcv_nxt;
+  uint16 rcv_wnd;
+}
+
 // a UDP packet header (comes after an IP header).
 struct udp {
   uint16 sport; // source port

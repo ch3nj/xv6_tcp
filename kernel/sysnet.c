@@ -139,7 +139,7 @@ sockwrite(struct sock *si, uint64 addr, int n) {
     release(&si->lock);
     return n;
   }
-  
+
 }
 
 int
@@ -211,5 +211,25 @@ sockrecvudp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport)
 
 void
 sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport) {
-  
+  struct sock *si;
+  acquire(&lock);
+  si = sockets;
+  while(si) {
+    if (si->raddr == raddr &&
+        si->lport == lport &&
+	si->rport == rport) {
+      break;
+    }
+    si = si->next;
+  }
+  // printf("%p", si);
+  release(&lock);
+  if (si) {
+    acquire(&si->lock);
+    mbufq_pushtail(&si->rxq, m);
+    release(&si->lock);
+    wakeup(&si->rxq);
+  } else {
+    mbuffree(m);
+  }
 }
