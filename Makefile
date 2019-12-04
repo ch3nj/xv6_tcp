@@ -150,6 +150,8 @@ UPROGS=\
 	$U/_alloctest\
 	$U/_bigfile\
 	$U/_tcptests\
+	$U/_tcpservertests\
+
 
 fs.img: mkfs/mkfs README user/xargstest.sh $(UPROGS)
 	mkfs/mkfs fs.img README user/xargstest.sh $(UPROGS)

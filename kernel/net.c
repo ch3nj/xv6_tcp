@@ -218,7 +218,7 @@ net_tx_udp(struct mbuf *m, uint32 dip,
   net_tx_ip(m, IPPROTO_UDP, dip);
 }
 
-
+// TODO: implement checksum
 uint16
 tcp_checksum(struct mbuf *m)
 {
@@ -236,54 +236,54 @@ net_tx_tcp(struct mbuf *m, uint32 dip, uint16 sport, uint16 dport, struct tcp_st
 
   // push the TCP header
   tcphdr = mbufpushhdr(m, *tcphdr);
+  // default values
   tcphdr->sport = htons(sport);
   tcphdr->dport = htons(dport);
+  tcphdr->seqnum = htonl(tcp.snd_nxt);
+  tcphdr->acknum = htonl(tcp.rcv_nxt);
+  tcphdr->window = htons(tcp.rcv_wnd);
+  tcphdr->offset = 0x50; // no options
+  tcphdr->sum = 0;
+  tcphdr->urgptr = 0;
+  tcphdr->flags = TCP_ACK;
   switch (tcp.state)
   {
     case TS_SEND_SYN:
       printf("sending syn from %d to %d\n", sport, dport);
       tcphdr->seqnum = htonl(tcp.iss);
-      tcphdr->acknum = 0;
-      tcphdr->offset = 0x50; // no options
       tcphdr->flags = TCP_SYN;
-      tcphdr->window = tcp.rcv_wnd;
-      tcphdr->sum = 0;
-      tcphdr->urgptr = 0;
-      tcphdr->sum = tcp_checksum(m);
       break;
     case TS_LISTEN:
-      goto fail;
       break;
     case TS_SYN_SENT:
       // send ack
-      printf("sending ack from %d to %d\n", sport, dport);
-      tcphdr->seqnum = htonl(tcp.snd_nxt);
-      tcphdr->acknum = tcp.rcv_nxt;
-      tcphdr->offset = 0x50; // no options
-      tcphdr->flags = TCP_ACK;
-      tcphdr->window = tcp.rcv_wnd;
-      tcphdr->sum = 0;
-      tcphdr->urgptr = 0;
-      tcphdr->sum = tcp_checksum(m);
+      printf("sending ack of syn from %d to %d\n", sport, dport);
       break;
     case TS_SYN_RECV:
-      goto fail;
       break;
     case TS_ESTAB:
       printf("sending packet from %d to %d\n", sport, dport);
-      tcphdr->seqnum = htonl(tcp.snd_nxt);
-      tcphdr->acknum = tcp.rcv_nxt;
-      tcphdr->offset = 0x50; // no options
-      tcphdr->flags = TCP_ACK;
-      tcphdr->window = tcp.rcv_wnd;
-      tcphdr->sum = 0;
-      tcphdr->urgptr = 0;
-      tcphdr->sum = tcp_checksum(m);
+      break;
+    case TS_SEND_FIN:
+      printf("sending fin from %d to %d\n", sport, dport);
+      tcphdr->flags = TCP_FIN | TCP_ACK;
+      break;
+    case TS_FIN_W1:
+      break;
+    case TS_FIN_W2:
+      break;
+    case TS_CLOSING:
+      break;
+    case TS_CLOSE_W:
+      tcphdr->flags = TCP_FIN | TCP_ACK;
+      break;
+    case TS_LAST_ACK:
       break;
     default:
       goto fail;
       break;
   }
+  tcphdr->sum = tcp_checksum(m);
   // now on to the IP layer
   net_tx_ip(m, IPPROTO_TCP, dip);
 fail:
