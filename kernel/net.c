@@ -404,8 +404,8 @@ net_rx_tcp(struct mbuf *m, uint16 len, struct ip *iphdr)
 {
   struct tcp *tcphdr;
   uint32 sip, seqnum, acknum;
-  uint16 sport, dport;
-  // uint16 window, sum, urgptr;
+  uint16 sport, dport, window;
+  // uint16  sum, urgptr;
   // uint8 offset,
   uint8 flags, ack, syn, fin;
   // uint8 urg,  psh, rst;
@@ -441,7 +441,7 @@ net_rx_tcp(struct mbuf *m, uint16 len, struct ip *iphdr)
   acknum = ntohl(tcphdr->acknum);
   // offset = tcphdr->offset;
   flags = tcphdr->flags;
-  // window = ntohs(tcphdr->window);
+  window = ntohs(tcphdr->window);
   // sum = ntohs(tcphdr->sum);
   // urgptr = ntohs(tcphdr->urgptr);
 
