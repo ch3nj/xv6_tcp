@@ -207,7 +207,7 @@ net_tx_udp(struct mbuf *m, uint32 dip,
   struct udp *udphdr;
   printf("t udp\n");
 
-  // put the UDP header
+  // push the UDP header
   udphdr = mbufpushhdr(m, *udphdr);
   udphdr->sport = htons(sport);
   udphdr->dport = htons(dport);
@@ -218,19 +218,75 @@ net_tx_udp(struct mbuf *m, uint32 dip,
   net_tx_ip(m, IPPROTO_UDP, dip);
 }
 
+uint16
+tcp_checksum(struct mbuf *m)
+{
+  return 0;
+}
+
 // sends a TCP packet
 void
-net_tx_tcp(struct mbuf *m, uint32 dip, uint16 sport, uint16 dport, struct tcp_state tcp) {
+net_tx_tcp(struct mbuf *m, uint32 dip, uint16 sport, uint16 dport, struct tcp_state tcp)
+{
   struct tcp *tcphdr;
   printf("t tcp\n");
 
-  // put the TCP header
+  // push options (nothing for now)
+
+  // push the TCP header
   tcphdr = mbufpushhdr(m, *tcphdr);
   tcphdr->sport = htons(sport);
   tcphdr->dport = htons(dport);
-
+  switch (tcp.state)
+  {
+    case TS_SEND_SYN:
+      printf("sending syn from %d to %d\n", sport, dport);
+      tcphdr->seqnum = htonl(tcp.iss);
+      tcphdr->acknum = 0;
+      tcphdr->offset = 0x50; // no options
+      tcphdr->flags = TCP_SYN;
+      tcphdr->window = tcp.rcv_wnd;
+      tcphdr->sum = 0;
+      tcphdr->urg = 0;
+      tcphdr->sum = tcp_checksum(m);
+      break;
+    case TS_LISTEN:
+      goto fail;
+      break;
+    case TS_SYN_SENT:
+      // send ack
+      printf("sending ack from %d to %d\n", sport, dport);
+      tcphdr->seqnum = htonl(tcp.snd_nxt);
+      tcphdr->acknum = tcp.rcv_nxt;
+      tcphdr->offset = 0x50; // no options
+      tcphdr->flags = TCP_ACK;
+      tcphdr->window = tcp.rcv_wnd;
+      tcphdr->sum = 0;
+      tcphdr->urg = 0;
+      tcphdr->sum = tcp_checksum(m);
+      break;
+    case TS_SYN_RECV:
+      goto fail;
+      break;
+    case ESTAB:
+      printf("sending packet from %d to %d\n", sport, dport);
+      tcphdr->seqnum = htonl(tcp.snd_nxt);
+      tcphdr->acknum = tcp.rcv_nxt;
+      tcphdr->offset = 0x50; // no options
+      tcphdr->flags = TCP_ACK;
+      tcphdr->window = tcp.rcv_wnd;
+      tcphdr->sum = 0;
+      tcphdr->urg = 0;
+      tcphdr->sum = tcp_checksum(m);
+      break;
+    default:
+      goto fail;
+      break;
+  }
   // now on to the IP layer
   net_tx_ip(m, IPPROTO_TCP, dip);
+fail:
+  mbuffree(m);
 }
 
 // sends an ARP packet
@@ -357,7 +413,7 @@ net_rx_tcp(struct mbuf *m, uint16 len, struct ip *iphdr)
   // TODO: validate TCP checksum
 
   // get options
-  uint8 lines = (tcphdr->offset & 0x0F);
+  uint8 lines = (tcphdr->offset & 0xF0) >> 4;
   if (lines < 5)
     goto fail;
 

@@ -2,6 +2,10 @@
 // packet buffer management
 //
 
+#define SOCK_TYPE_UDP 0
+#define SOCK_TYPE_TCP_CLIENT 1
+#define SOCK_TYPE_TCP_SERVER 2
+
 #define MBUF_SIZE              2048
 #define MBUF_DEFAULT_HEADROOM  128
 

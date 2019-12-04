@@ -64,7 +64,7 @@ sys_connect()
 
   if (argint(0, (int*)&raddr) < 0 ||
       argint(1, (int*)&lport) < 0 ||
-      argint(2, (int*)&rport) < 0 || 
+      argint(2, (int*)&rport) < 0 ||
       argint(3, (int*)&type) < 0) {
     return -1;
   }

@@ -14,10 +14,6 @@
 #include "file.h"
 #include "net.h"
 
-#define SOCK_TYPE_UDP 0
-#define SOCK_TYPE_TCP_CLIENT 1
-#define SOCK_TYPE_TCP_SERVER 2
-
 struct sock {
   struct sock *next; // the next socket in the list
   uint32 raddr;      // the remote IPv4 address
