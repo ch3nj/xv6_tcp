@@ -232,8 +232,13 @@ sockrecvudp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport)
 }
 
 void
-sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport) {
+sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp_info *info) {
   struct sock *si;
+  struct tcp_state state;
+
+
+
+
   acquire(&lock);
   si = sockets;
   while(si) {
@@ -248,9 +253,44 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport) {
   release(&lock);
   if (si) {
     acquire(&si->lock);
-    mbufq_pushtail(&si->rxq, m);
-    release(&si->lock);
-    wakeup(&si->rxq);
+    state = si->state;
+    if (info->syn == 1) {
+      //syn
+      if (info->ack == 1) {
+        //syn-ack
+        if (state.state == SYN_SENT) {
+          // state.
+
+
+          // net_tx_tcp() //needs to send an ack
+          // state.state = ESTAB; 
+
+        } else {
+        panic("RECEIVED SYN-ACK IN NOT SYN_SENT STATE");
+        }
+      } else {
+        //normal syn
+        if (state.state == LISTEN) {
+          state.state = SYN_RECV; //needs to send syn-ack
+        } else {
+          panic("RECEIVED SYN IN NOT LISTENING STATE");
+        }
+      }
+    } else {
+      //not syn
+      if (m->len == 0) {
+        //an ack 
+
+      } else {
+        //data we should process
+        mbufq_pushtail(&si->rxq, m);
+        release(&si->lock);
+        wakeup(&si->rxq);
+        return;
+      }
+    }
+
+
   } else {
     mbuffree(m);
   }

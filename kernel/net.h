@@ -129,7 +129,7 @@ struct tcp {
   uint8 flags;              // flags
   uint16 window;            // window
   uint16 sum;               // checksum
-  uint16 urg;               // urgent pointer
+  uint16 urgptr;               // urgent pointer
 };
 
 #define TS_SEND_SYN 1
@@ -162,6 +162,14 @@ struct tcp_state {
   uint32 rcv_nxt;
   uint16 rcv_wnd;
   uint16 rcv_up;
+};
+
+struct tcp_info {
+  uint32 seqnum;
+  uint32 acknum;
+  uint8 ack;
+  uint8 syn;
+  uint8 fin;
 };
 
 // a UDP packet header (comes after an IP header).
