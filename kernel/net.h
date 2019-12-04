@@ -171,6 +171,7 @@ struct tcp_info {
   uint8 ack;
   uint8 syn;
   uint8 fin;
+  uint16 window;
 };
 
 // a UDP packet header (comes after an IP header).
