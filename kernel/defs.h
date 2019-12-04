@@ -10,6 +10,8 @@ struct stat;
 struct superblock;
 struct mbuf;
 struct sock;
+struct tcp_state;
+struct tcp_info;
 
 // bio.c
 void            binit(void);
@@ -65,7 +67,7 @@ int             writei(struct inode*, int, uint64, uint, uint);
 
 // net.c
 void            net_rx(struct mbuf*);
-void            net_tx_tcp(struct mbuf*, uint32, uint16, uint16);
+void            net_tx_tcp(struct mbuf*, uint32, uint16, uint16, struct tcp_state*);
 void            net_tx_udp(struct mbuf*, uint32, uint16, uint16);
 
 // sysnet.c
@@ -75,7 +77,7 @@ void            sockclose(struct sock*, int);
 int             sockread(struct sock*, uint64, int);
 int             sockwrite(struct sock*, uint64, int);
 void            sockrecvudp(struct mbuf*, uint32, uint16, uint16);
-void            sockrecvtcp(struct mbuf*, uint32, uint16, uint16);
+void            sockrecvtcp(struct mbuf*, uint32, uint16, uint16, struct tcp_info*);
 
 // ramdisk.c
 void            ramdiskinit(void);

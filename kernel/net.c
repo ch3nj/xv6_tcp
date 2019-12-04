@@ -218,11 +218,28 @@ net_tx_udp(struct mbuf *m, uint32 dip,
   net_tx_ip(m, IPPROTO_UDP, dip);
 }
 
+// net_tcp_init()
+
 // sends a TCP packet
 void
-net_tx_tcp(struct mbuf *m, uint32 dip, uint16 sport, uint16 dport) {
+net_tx_tcp(struct mbuf *m, uint32 dip, uint16 sport, uint16 dport, struct tcp_state *state) {
   struct tcp *tcphdr;
   printf("t tcp\n");
+
+
+  // if (tcp_state == LISTEN) {
+  //   //this is incorrect
+  // } else if (tcp_state == SYN_SENT) {
+  //   //this is also incorrect
+  // } else if (tcp_state == SYN_RECV) {
+  //  //this is also incorrect
+  // } else if (tcp_state == ESTAB) {
+
+  // } else if (tcp_state == ESTAB) {
+
+
+
+
 
   // put the TCP header
   tcphdr = mbufpushhdr(m, *tcphdr);
@@ -346,8 +363,12 @@ static void
 net_rx_tcp(struct mbuf *m, uint16 len, struct ip *iphdr)
 {
   struct tcp *tcphdr;
-  uint32 sip;
-  uint16 sport, dport;
+  uint32 sip, seqnum, acknum;
+  uint16 sport, dport; 
+  // uint16 window, sum, urgptr;
+  // uint8 offset, 
+  uint8 flags, ack, syn, fin;
+  // uint8 urg,  psh, rst;
   printf("r tcp\n");
 
   tcphdr = mbufpullhdr(m, *tcphdr);
@@ -361,7 +382,7 @@ net_rx_tcp(struct mbuf *m, uint16 len, struct ip *iphdr)
   if (lines < 5)
     goto fail;
 
-  mbufpullhdr(m, (uint16)((lines - 5) << 2)); // do nothing with these for now
+  mbufpullhdr(m, (uint16)((lines - 5) << 2)); // do nothing with these options for now
 
   len -= sizeof(*tcphdr);
   len -= ((lines - 5) << 2); // does this actually work
@@ -376,7 +397,34 @@ net_rx_tcp(struct mbuf *m, uint16 len, struct ip *iphdr)
   sip = ntohl(iphdr->ip_src);
   sport = ntohs(tcphdr->sport);
   dport = ntohs(tcphdr->dport);
-  sockrecvtcp(m, sip, dport, sport);
+  seqnum = ntohl(tcphdr->seqnum);
+  acknum = ntohl(tcphdr->acknum);
+  // offset = tcphdr->offset;
+  flags = tcphdr->flags;
+  // window = ntohs(tcphdr->window);
+  // sum = ntohs(tcphdr->sum);
+  // urgptr = ntohs(tcphdr->urgptr);
+
+  //read flags
+  // urg = flags & TCP_URG;
+  ack = flags & TCP_ACK;
+  // psh = flags & TCP_PSH;
+  // rst = flags & TCP_RST;
+  syn = flags & TCP_SYN;
+  fin = flags & TCP_FIN;
+
+  struct tcp_info info;
+  info.seqnum = seqnum;
+  info.acknum = acknum;
+  info.ack = ack;
+  info.syn = syn;
+  info.fin = fin;
+
+  if (ack == 0) { 
+    panic("no ack bit set!");
+  }
+
+  sockrecvtcp(m, sip, dport, sport, &info);
   return;
 
 fail:
