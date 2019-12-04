@@ -37,7 +37,7 @@ sockinit(void)
 }
 
 int
-sockalloc(struct file **f, uint32 raddr, uint16 lport, uint16 rport, uint8 type)
+sockalloc(struct file **f, uint32 raddr, uint32 lport, uint32 rport, uint8 type)
 {
   struct sock *si, *pos;
 
@@ -53,20 +53,24 @@ sockalloc(struct file **f, uint32 raddr, uint16 lport, uint16 rport, uint8 type)
   si->lport = lport;
   si->rport = rport;
   si->type = type;
+  printf("break0\n");
   initlock(&si->lock, "sock");
   mbufq_init(&si->rxq);
   (*f)->type = FD_SOCK;
   (*f)->readable = 1;
   (*f)->writable = 1;
   (*f)->sock = si;
-
+  printf("break1\n");
   // add to list of sockets
   acquire(&lock);
+  printf("break2\n");
   pos = sockets;
+  printf("ALLOCATING: %d, %d, %d", raddr, lport, rport);
   while (pos) {
     if (pos->raddr == raddr &&
         pos->lport == lport &&
 	pos->rport == rport) {
+
       release(&lock);
       goto bad;
     }
@@ -75,9 +79,11 @@ sockalloc(struct file **f, uint32 raddr, uint16 lport, uint16 rport, uint8 type)
   si->next = sockets;
   sockets = si;
   release(&lock);
+  printf("finished alloc\n");
   return 0;
 
 bad:
+  printf("bad alloc\n");
   if (si)
     kfree((char*)si);
   if (*f)
@@ -107,7 +113,7 @@ sockclose(struct sock *si, int writable) {
   if (pos->raddr == si->raddr && pos->lport == si->lport && pos->rport == si->rport) {
     sockets = pos->next;
   } else {
-    while(pos->next) {
+    while(pos) {
       next = pos->next;
       if (next->raddr == si->raddr && next->lport == si->lport && next->rport == si->rport) {
         pos->next = next->next;
