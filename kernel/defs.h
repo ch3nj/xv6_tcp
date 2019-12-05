@@ -71,6 +71,7 @@ void            net_tx_tcp(struct mbuf*, uint32, uint16, uint16, struct tcp_stat
 void            net_tx_udp(struct mbuf*, uint32, uint16, uint16);
 
 // sysnet.c
+#define MAX_QUEUED_CONNECTIONS 1
 void            sockinit(void);
 int             sockalloc(struct file **, uint32, uint32, uint32, uint32);
 void            sockclose(struct sock*, int);

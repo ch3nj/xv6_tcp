@@ -8,49 +8,33 @@
 // and receive a response.
 //
 static void
-ping(uint16 sport, uint16 dport, int attempts)
+echo(uint16 sport)
 {
   int fd;
-  char obuf[13] = "hello world!";
-  uint32 dst;
 
-  // 10.0.2.2, which qemu remaps to the external host,
-  // i.e. the machine you're running qemu on.
-  dst = (10 << 24) | (0 << 16) | (2 << 8) | (2 << 0);
-
-  // you can send a UDP packet to any Internet address
-  // by using a different dst.
-  printf("hi1, %d, %d, %d\n", dst, sport, dport);
-  if((fd = connect(dst, sport, dport, SOCK_TYPE_TCP_CLIENT)) < 0){
-    fprintf(2, "ping: connect() failed\n");
+  printf("hi1, %d\n", sport);
+  if((fd = listen(sport)) < 0){
+    fprintf(2, "ping: listen() failed\n");
     exit(1);
   }
 
   printf("hi2\n");
-  for(int i = 0; i < attempts; i++) {
-    if(write(fd, obuf, sizeof(obuf)) < 0){
-      fprintf(2, "ping: send() failed\n");
-      exit(1);
-    }
-  }
-
-  printf("hi3\n");
   char ibuf[128];
   int cc = read(fd, ibuf, sizeof(ibuf));
   if(cc < 0){
-    fprintf(2, "ping: recv() failed\n");
+    fprintf(2, "echo: recv() failed\n");
     exit(1);
   }
-
-  printf("hi4\n");
-  // printf("\"%s\" : \"%s\"\n", obuf, ibuf);
-  // printf("%d\n", cc);
-  close(fd);
-  if (strcmp(obuf, ibuf) || cc != sizeof(obuf)){
-    fprintf(2, "ping didn't receive correct payload\n");
-    exit(1);
-  }
-  printf("hi5\n");
+  //
+  // printf("hi4\n");
+  // // printf("\"%s\" : \"%s\"\n", obuf, ibuf);
+  // // printf("%d\n", cc);
+  // close(fd);
+  // if (strcmp(obuf, ibuf) || cc != sizeof(obuf)){
+  //   fprintf(2, "ping didn't receive correct payload\n");
+  //   exit(1);
+  // }
+  // printf("hi5\n");
 }
 
 // Encode a DNS name
@@ -235,36 +219,36 @@ dns()
 int
 main(int argc, char *argv[])
 {
-  int ret;
-  int i;
+  // int ret;
+  // int i;
   uint16 dport = NET_TESTS_PORT;
 
   printf("nettests running on port %d\n", dport);
 
-  printf("testing one ping: ");
-  ping(2000, dport, 2);
+  printf("testing listen: ");
+  echo(25600);
   printf("OK\n");
 
-  printf("testing single-process pings: ");
-  for (i = 0; i < 100; i++)
-    ping(2000, dport, 1);
-  printf("OK\n");
-
-
-  printf("testing multi-process pings: ");
-  for (i = 0; i < 10; i++){
-    int pid = fork();
-    if (pid == 0){
-      ping(2000 + i + 1, dport, 1);
-      exit(0);
-    }
-  }
-  for (i = 0; i < 10; i++){
-    wait(&ret);
-    if (ret != 0)
-      exit(1);
-  }
-  printf("OK\n");
+  // printf("testing single-process pings: ");
+  // for (i = 0; i < 100; i++)
+  //   ping(2000, dport, 1);
+  // printf("OK\n");
+  //
+  //
+  // printf("testing multi-process pings: ");
+  // for (i = 0; i < 10; i++){
+  //   int pid = fork();
+  //   if (pid == 0){
+  //     ping(2000 + i + 1, dport, 1);
+  //     exit(0);
+  //   }
+  // }
+  // for (i = 0; i < 10; i++){
+  //   wait(&ret);
+  //   if (ret != 0)
+  //     exit(1);
+  // }
+  // printf("OK\n");
 
 
   // // printf("testing multi-process pings: ");

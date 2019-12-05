@@ -15,6 +15,7 @@
 #include "sleeplock.h"
 #include "file.h"
 #include "fcntl.h"
+#include "net.h"
 
 // Fetch the nth word-sized system call argument as a file descriptor
 // and return both the descriptor and the corresponding struct file.
@@ -71,6 +72,27 @@ sys_connect()
   printf("LPORT: %d\n", lport);
 
   if(sockalloc(&f, raddr, lport, rport, type) < 0)
+    return -1;
+  if((fd=fdalloc(f)) < 0){
+    fileclose(f);
+    return -1;
+  }
+
+  return fd;
+}
+
+uint64
+sys_listen()
+{
+  struct file *f;
+  int fd;
+  uint32 lport;
+
+  if (argint(0, (int*)&lport) < 0) {
+    return -1;
+  }
+  printf("LPORT: %d\n", lport);
+  if(sockalloc(&f, 0, lport, 0, SOCK_TYPE_TCP_SERVER) < 0)
     return -1;
   if((fd=fdalloc(f)) < 0){
     fileclose(f);

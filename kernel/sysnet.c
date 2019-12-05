@@ -188,9 +188,10 @@ sockwrite(struct sock *si, uint64 addr, int n) {
   printf("SOCKET TYPE: %d", si->type);
   if (si->type == SOCK_TYPE_UDP) {
     printf("going to udp");
-    net_tx_udp(m, si->raddr ,si->lport, si->rport);
+    net_tx_udp(m, si->raddr, si->lport, si->rport);
   } else {
-    net_tx_tcp(m, si->raddr ,si->lport, si->rport, si->tcp);
+    net_tx_tcp(m, si->raddr, si->lport, si->rport, si->tcp);
+    si->tcp.snd_nxt = si->tcp.snd_nxt + n;
   }
   release(&si->lock);
   return n;
@@ -271,7 +272,12 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
   while(si) {
     if (si->raddr == raddr &&
         si->lport == lport &&
-	si->rport == rport) {
+	      si->rport == rport) {
+      break;
+    }
+    if (si->lport == lport &&
+        si->tcp.state == TS_LISTEN &&
+        info->syn == 1) {
       break;
     }
     si = si->next;
@@ -286,43 +292,50 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
   switch (state->state)
   {
     case TS_SEND_SYN:
+      goto dump;
       break;
     case TS_LISTEN:
       if (info->syn == 1 && info->ack == 0) {
+        si->raddr = raddr;
+        si->rport = rport;
         state->irs = info->seqnum;
-        state->rcv_nxt = info->seqnum + 1; // + m->len
+        state->rcv_nxt = info->seqnum + 1; // TODO: + m->len
         state->snd_wnd = info->window;
-        net_tx_tcp(m, raddr, lport, rport, *state); // needs to send syn-ack
+        struct mbuf *emp = mbufalloc(MBUF_DEFAULT_HEADROOM);
+        net_tx_tcp(emp, raddr, lport, rport, *state); // send syn-ack
         state->state = TS_SYN_RECV;
-        release(&si->lock);
-        return;
+        goto dump; // TODO: if m->len > 0, deliver
       }
+      goto dump;
       break;
     case TS_SYN_SENT:
-      if (info->syn == 1 && info->ack == 1 && state->rcv_nxt == info->seqnum) {
+      if (info->syn == 1 && info->ack == 1 && state->snd_una <= info->acknum) {
           state->snd_una = info->acknum;
-          state->rcv_wnd = info->window;
-          // state->rcv_nxt = info->seqnum + 1; // is this a thing?
-          // state->rcv_wnd = info->window;
-          net_tx_tcp(m, raddr, lport, rport, *state); //needs to send an ack
+          state->irs = info->seqnum;
+          state->rcv_nxt = info->seqnum + 1; // TODO: + m->len
+          state->snd_wnd = info->window;
+          struct mbuf *emp = mbufalloc(MBUF_DEFAULT_HEADROOM);
+          net_tx_tcp(emp, raddr, lport, rport, *state); // send an ack
           state->state = TS_ESTAB;
-          release(&si->lock);
+          goto dump; // TODO: if m->len > 0, deliver
           return;
         }
       break;
     case TS_SYN_RECV:
-      if (info->syn == 0 && info->ack == 1 && state->rcv_nxt == info->seqnum) {
-          state->rcv_nxt = info->seqnum + 1;
+      if (info->syn == 0 && info->ack == 1 && state->snd_una <= info->acknum) {
+          state->snd_una = info->acknum;
+          state->rcv_nxt = info->seqnum; // TODO: + m->len
           state->snd_wnd = info->window;
           state->state = TS_ESTAB;
-          release(&si->lock);
+          goto dump; // TODO: if m->len > 0, deliver
           return;
         }
       break;
     case TS_ESTAB:
       if (info->syn == 0 && info->ack == 1) {
         //legal packet
-        state->rcv_nxt = info->seqnum + 1;
+        state->snd_una = info->acknum;
+        state->rcv_nxt = info->seqnum; // TODO: + m->len
         state->snd_wnd = info->window;
         goto deliver;
       }
@@ -333,8 +346,8 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
       break;
     case TS_FIN_W1:
       if (info->fin) {
-        struct mbuf *m = mbufalloc(MBUF_DEFAULT_HEADROOM);
-        net_tx_tcp(m, raddr, lport, rport, *state); // needs to send an ack
+        struct mbuf *emp = mbufalloc(MBUF_DEFAULT_HEADROOM);
+        net_tx_tcp(emp, raddr, lport, rport, *state); // needs to send an ack
         if (info->ack && info->acknum == state->snd_nxt) {
           state->state = TS_TIME_W;
           wakeup(&si->tcp);
@@ -350,8 +363,8 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
       break;
     case TS_FIN_W2:
       if (info->fin) {
-        struct mbuf *m = mbufalloc(MBUF_DEFAULT_HEADROOM);
-        net_tx_tcp(m, raddr, lport, rport, *state); // needs to send an ack
+        struct mbuf *emp = mbufalloc(MBUF_DEFAULT_HEADROOM);
+        net_tx_tcp(emp, raddr, lport, rport, *state); // needs to send an ack
         state->state = TS_TIME_W;
         wakeup(&si->tcp);
         goto dump;

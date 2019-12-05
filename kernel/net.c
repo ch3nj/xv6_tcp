@@ -254,6 +254,9 @@ net_tx_tcp(struct mbuf *m, uint32 dip, uint16 sport, uint16 dport, struct tcp_st
       tcphdr->flags = TCP_SYN;
       break;
     case TS_LISTEN:
+      printf("sending syn/ack from %d to %d\n", sport, dport);
+      tcphdr->seqnum = htonl(tcp.iss);
+      tcphdr->flags = TCP_SYN | TCP_ACK;
       break;
     case TS_SYN_SENT:
       // send ack
