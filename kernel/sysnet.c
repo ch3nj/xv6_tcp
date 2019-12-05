@@ -300,6 +300,8 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
       if (info->syn == 1 && info->ack == 1 && state->rcv_nxt == info->seqnum) {
           state->snd_una = info->acknum;
           state->rcv_wnd = info->window;
+          // state->rcv_nxt = info->seqnum + 1; // is this a thing?
+          // state->rcv_wnd = info->window;
           net_tx_tcp(m, raddr, lport, rport, *state); //needs to send an ack
           state->state = TS_ESTAB;
           release(&si->lock);
@@ -318,12 +320,20 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
     case TS_ESTAB:
       if (info->syn == 0 && info->ack == 1) {
         //legal packet
-        state->rcv_nxt = info->seqnum + 1;
-        state->snd_wnd = info->window;
-        mbufq_pushtail(&si->rxq, m);
-        release(&si->lock);
-        wakeup(&si->rxq);
-        return;
+        if (m->len > 0) {
+          //contains data
+          state->rcv_nxt = info->seqnum + 1;
+          state->snd_wnd = info->window;
+          state->snd_una++;
+          mbufq_pushtail(&si->rxq, m);
+
+          net_tx_tcp(m, raddr, lport, rport, *state); //needs to send an ack
+          release(&si->lock);
+          wakeup(&si->rxq);
+          return;
+          }
+      } else {
+
       }
 
       break;
