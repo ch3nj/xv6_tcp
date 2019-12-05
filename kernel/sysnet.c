@@ -190,6 +190,9 @@ sockwrite(struct sock *si, uint64 addr, int n) {
     printf("going to udp");
     net_tx_udp(m, si->raddr, si->lport, si->rport);
   } else {
+    while (si->tcp.state != TS_ESTAB) {
+      sleep(&si->tcp, &si->lock);
+    }
     net_tx_tcp(m, si->raddr, si->lport, si->rport, si->tcp);
     si->tcp.snd_nxt = si->tcp.snd_nxt + n;
   }
@@ -292,6 +295,7 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
   switch (state->state)
   {
     case TS_SEND_SYN:
+      wakeup(&si->tcp);
       goto dump;
       break;
     case TS_LISTEN:
@@ -304,6 +308,7 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
         struct mbuf *emp = mbufalloc(MBUF_DEFAULT_HEADROOM);
         net_tx_tcp(emp, raddr, lport, rport, *state); // send syn-ack
         state->state = TS_SYN_RECV;
+        wakeup(&si->tcp);
         goto dump; // TODO: if m->len > 0, deliver
       }
       goto dump;
@@ -317,6 +322,7 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
           struct mbuf *emp = mbufalloc(MBUF_DEFAULT_HEADROOM);
           net_tx_tcp(emp, raddr, lport, rport, *state); // send an ack
           state->state = TS_ESTAB;
+          wakeup(&si->tcp);
           goto dump; // TODO: if m->len > 0, deliver
           return;
         }
@@ -327,6 +333,7 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
           state->rcv_nxt = info->seqnum; // TODO: + m->len
           state->snd_wnd = info->window;
           state->state = TS_ESTAB;
+          wakeup(&si->tcp);
           goto dump; // TODO: if m->len > 0, deliver
           return;
         }
@@ -337,6 +344,7 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
         state->snd_una = info->acknum;
         state->rcv_nxt = info->seqnum; // TODO: + m->len
         state->snd_wnd = info->window;
+        wakeup(&si->tcp);
         goto deliver;
       }
       goto dump;

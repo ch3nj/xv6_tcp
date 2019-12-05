@@ -222,7 +222,17 @@ net_tx_udp(struct mbuf *m, uint32 dip,
 uint16
 tcp_checksum(struct mbuf *m)
 {
-  return 0;
+  uint32 sum = 0;
+  int i = m->len;
+  while(i>0)
+  {
+          sum+=*buffer;
+          buffer+=1;
+          i-=2;
+  }
+  sum = (sum >> 16) + (sum & htonl(0x0000ffff));
+  sum += (sum >> 16);
+  return ~sum;
 }
 
 // sends a TCP packet
@@ -233,7 +243,7 @@ net_tx_tcp(struct mbuf *m, uint32 dip, uint16 sport, uint16 dport, struct tcp_st
   printf("t tcp\n");
 
   // push options (nothing for now)
-
+  mbufpush(m, 4);
   // push the TCP header
   tcphdr = mbufpushhdr(m, *tcphdr);
   // default values
@@ -242,7 +252,7 @@ net_tx_tcp(struct mbuf *m, uint32 dip, uint16 sport, uint16 dport, struct tcp_st
   tcphdr->seqnum = htonl(tcp.snd_nxt);
   tcphdr->acknum = htonl(tcp.rcv_nxt);
   tcphdr->window = htons(tcp.rcv_wnd);
-  tcphdr->offset = 0x50; // no options
+  tcphdr->offset = 0x60; // 1 line of no options
   tcphdr->sum = 0;
   tcphdr->urgptr = 0;
   tcphdr->flags = TCP_ACK;
@@ -292,6 +302,7 @@ net_tx_tcp(struct mbuf *m, uint32 dip, uint16 sport, uint16 dport, struct tcp_st
   tcphdr->sum = tcp_checksum(m);
   // now on to the IP layer
   net_tx_ip(m, IPPROTO_TCP, dip);
+  return;
 fail:
   mbuffree(m);
 }

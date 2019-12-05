@@ -11,7 +11,7 @@ static void
 ping(uint16 sport, uint16 dport, int attempts)
 {
   int fd;
-  // char obuf[13] = "hello world!";
+  char obuf[13] = "hello world!";
   uint32 dst;
 
   // 10.0.2.2, which qemu remaps to the external host,
@@ -26,13 +26,13 @@ ping(uint16 sport, uint16 dport, int attempts)
     exit(1);
   }
 
-  // printf("hi2\n");
-  // for(int i = 0; i < attempts; i++) {
-  //   if(write(fd, obuf, sizeof(obuf)) < 0){
-  //     fprintf(2, "ping: send() failed\n");
-  //     exit(1);
-  //   }
-  // }
+  printf("hi2\n");
+  for(int i = 0; i < attempts; i++) {
+    if(write(fd, obuf, sizeof(obuf)) < 0){
+      fprintf(2, "ping: send() failed\n");
+      exit(1);
+    }
+  }
   //
   // printf("hi3\n");
   // char ibuf[128];
@@ -45,7 +45,7 @@ ping(uint16 sport, uint16 dport, int attempts)
   // printf("hi4\n");
   // printf("\"%s\" : \"%s\"\n", obuf, ibuf);
   // printf("%d\n", cc);
-  // close(fd);
+  close(fd);
   // if (strcmp(obuf, ibuf) || cc != sizeof(obuf)){
   //   fprintf(2, "ping didn't receive correct payload\n");
   //   exit(1);
