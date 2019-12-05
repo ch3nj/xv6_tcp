@@ -52,6 +52,7 @@ sockalloc(struct file **f, uint32 raddr, uint32 lport, uint32 rport, uint32 type
   si->rport = rport;
   si->type = type;
   initlock(&si->lock, "sock");
+  acquire(&si->lock);
   mbufq_init(&si->rxq);
   (*f)->type = FD_SOCK;
   (*f)->readable = 1;
@@ -65,6 +66,7 @@ sockalloc(struct file **f, uint32 raddr, uint32 lport, uint32 rport, uint32 type
         pos->lport == lport &&
 	      pos->rport == rport) {
       release(&lock);
+      release(&si->lock);
       goto bad;
     }
     pos = pos->next;
@@ -73,7 +75,6 @@ sockalloc(struct file **f, uint32 raddr, uint32 lport, uint32 rport, uint32 type
   sockets = si;
   release(&lock);
 
-  // do we need locking here?
   if (type == SOCK_TYPE_TCP_CLIENT || type == SOCK_TYPE_TCP_SERVER) {
     // create random initial sequence number
     // uint32 iss = rand() & 0xff;
@@ -84,7 +85,7 @@ sockalloc(struct file **f, uint32 raddr, uint32 lport, uint32 rport, uint32 type
     si->tcp.iss = iss;
     si->tcp.snd_una = iss + 1;
     si->tcp.snd_nxt = iss + 1;
-    si->tcp.snd_wnd = TCP_WINDOW;
+    si->tcp.rcv_wnd = TCP_WINDOW;
   }
   if (type == SOCK_TYPE_TCP_CLIENT) {
     si->tcp.state = TS_SEND_SYN;
@@ -95,6 +96,7 @@ sockalloc(struct file **f, uint32 raddr, uint32 lport, uint32 rport, uint32 type
   if (type == SOCK_TYPE_TCP_SERVER) {
     si->tcp.state = TS_LISTEN;
   }
+  release(&si->lock);
   return 0;
 
 bad:
@@ -288,9 +290,9 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
     case TS_LISTEN:
       if (info->syn == 1 && info->ack == 0) {
         state->irs = info->seqnum;
-        state->rcv_nxt = info->seqnum + 1;
-        state->rcv_wnd = info->window;
-        net_tx_tcp(m, raddr, lport, rport, *state); //needs to send syn-ack
+        state->rcv_nxt = info->seqnum + 1; // + m->len
+        state->snd_wnd = info->window;
+        net_tx_tcp(m, raddr, lport, rport, *state); // needs to send syn-ack
         state->state = TS_SYN_RECV;
         release(&si->lock);
         return;
@@ -320,12 +322,9 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
         //legal packet
         state->rcv_nxt = info->seqnum + 1;
         state->snd_wnd = info->window;
-        mbufq_pushtail(&si->rxq, m);
-        release(&si->lock);
-        wakeup(&si->rxq);
-        return;
+        goto deliver;
       }
-
+      goto dump;
       break;
     case TS_SEND_FIN:
       goto dump;
