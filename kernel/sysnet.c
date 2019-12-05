@@ -117,10 +117,7 @@ void
 sockclose(struct sock *si, int writable) {
   struct sock *pos, *next;
   acquire(&si->lock);
-  // free outstanding mbufs
-  while(!mbufq_empty(&si->rxq)) {
-    mbuffree(mbufq_pophead(&si->rxq));
-  }
+
 
   // if tcp, do the closing dance
   if (si->type == SOCK_TYPE_TCP_CLIENT || si->type == SOCK_TYPE_TCP_SERVER) {
@@ -130,9 +127,7 @@ sockclose(struct sock *si, int writable) {
       net_tx_tcp(m, si->raddr, si->lport, si->rport, si->tcp);
       si->tcp.snd_nxt++; // fin takes 1 sequence num
       si->tcp.state = TS_FIN_W1;
-      while (!(si->tcp.state == TS_FIN_W2  ||
-               si->tcp.state == TS_TIME_W  ||
-               si->tcp.state == TS_CLOSING ||
+      while (!(si->tcp.state == TS_TIME_W  ||
                si->tcp.state == TS_CLOSED)) {
         sleep(&si->lock, &si->tcp);
       }
@@ -147,6 +142,11 @@ sockclose(struct sock *si, int writable) {
         sleep(&si->lock, &si->tcp);
       }
     }
+  }
+
+  // free outstanding mbufs
+  while(!mbufq_empty(&si->rxq)) {
+    mbuffree(mbufq_pophead(&si->rxq));
   }
 
   // remove from sockets
@@ -331,27 +331,63 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
       goto dump;
       break;
     case TS_FIN_W1:
-      break;
-    case TS_FIN_W2:
-      break;
-    case TS_CLOSING:
-      break;
-    case TS_TIME_W:
-      break;
-    case TS_CLOSE_W:
-      break;
-    case TS_LAST_ACK:
-      if (info->ack && info->acknum == si->snd_nxt) {
-        si->tcp.state = TS_CLOSED;
+      if (info->fin) {
+        struct mbuf *m = mbufalloc(MBUF_DEFAULT_HEADROOM);
+        net_tx_tcp(m, raddr, lport, rport, *state); // needs to send an ack
+        if (info->ack && info->acknum == state->snd_nxt) {
+          state->state = TS_TIME_W;
+          wakeup(&si->tcp);
+          goto dump;
+        }
+        state->state = TS_CLOSING;
         goto dump;
       }
-
+      if (info->ack && info->acknum == state->snd_nxt) {
+        state->state = TS_FIN_W2;
+        goto dump;
+      }
+      break;
+    case TS_FIN_W2:
+      if (info->fin) {
+        struct mbuf *m = mbufalloc(MBUF_DEFAULT_HEADROOM);
+        net_tx_tcp(m, raddr, lport, rport, *state); // needs to send an ack
+        state->state = TS_TIME_W;
+        wakeup(&si->tcp);
+        goto dump;
+      }
+      break;
+    case TS_CLOSING:
+      if (info->ack && info->acknum == state->snd_nxt) {
+        state->state = TS_TIME_W;
+        wakeup(&si->tcp);
+        goto dump;
+      }
+      break;
+    case TS_TIME_W:
+      wakeup(&si->tcp);
+      goto dump;
+      break;
+    case TS_CLOSE_W:
+      goto dump;
+      break;
+    case TS_LAST_ACK:
+      if (info->ack && info->acknum == state->snd_nxt) {
+        state->state = TS_CLOSED;
+        wakeup(&si->tcp);
+        goto dump;
+      }
       break;
     default:
-      goto fail;
+      goto dump;
       break;
   }
 
+deliver:
+  mbufq_pushtail(&si->rxq, m);
+  release(&si->lock);
+  wakeup(&si->rxq);
+  return;
 dump:
+  release(&si->lock);
   mbuffree(m);
 }
