@@ -262,7 +262,7 @@ sockrecvudp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport)
 void
 sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp_info *info) {
   struct sock *si;
-  struct tcp_state state;
+  struct tcp_state *state;
 
   acquire(&lock);
   si = sockets;
@@ -280,70 +280,55 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
     goto dump;
 
   acquire(&si->lock);
-  state = si->tcp;
+  state = &si->tcp;
   switch (state.state)
   {
     case TS_SEND_SYN:
-      break
+      break;
     case TS_LISTEN:
       if (info->syn == 1 && info->ack == 0) {
-        state.irs = info.seqnum;
-        state.rcv_nxt = info.seqnum + 1;
-        state.rcv = info.window;
+        state->irs = info.seqnum;
+        state->rcv_nxt = info.seqnum + 1;
+        state->rcv = info.window;
         net_tx_tcp(m, raddr, lport, rport, state); //needs to send syn-ack
         state.state = TS_SYN_RECV;
         release(&si->lock);
         return;
       }
-      break
+      break;
     case TS_SYN_SENT:
       if (info->syn == 1 && info->ack == 1 && state.rcv_nxt == info->seqnum) {
-          state.snd_una = info.acknum + 1;
+          state.snd_una = info.acknum;
           state.rcv = info.window;
           net_tx_tcp(m, raddr, lport, rport, state); //needs to send an ack
           state.state = ESTAB;
           release(&si->lock);
           return;
         }
-      break
+      break;
     case TS_SYN_RECV:
       if (info->syn == 0 && info->ack == 1 && state.rcv_nxt == info->seqnum) {
-          state.rcv_nxt = info.acknum + 1;
-          state.rcv = info.window;
+          state.rcv_nxt = info.seqnum + 1;
+          state.snd_wnd = info.window;
           state.state = ESTAB;
           release(&si->lock);
           return;
         }
-      break
+      break;
     case TS_ESTAB:
       if (info->syn == 0 && info->ack == 1) {
         //legal packet
+        state.rcv_nxt = info.seqnum + 1;
+        state.snd_wnd = info.window;
         mbufq_pushtail(&si->rxq, m);
         release(&si->lock);
         wakeup(&si->rxq);
         return;
       }
 
-      break
+      break;
     case TS_SEND_FIN:
       goto dump;
-      break;
-    case TS_FIN_W1:
-      break;
-    case TS_LISTEN:
-
-      break
-    case TS_SYN_SENT:
-
-      break
-    case TS_SYN_RECV:
-
-      break
-    case TS_ESTAB:
-
-      break
-    case TS_SEND_FIN:
-
       break;
     case TS_FIN_W1:
       break;
@@ -356,66 +341,15 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
     case TS_CLOSE_W:
       break;
     case TS_LAST_ACK:
-      if (info->ack &&) {
+      if (info->ack && info->acknum == si->snd_nxt) {
         si->tcp.state = TS_CLOSED;
         goto dump;
       }
+
       break;
     default:
       goto fail;
       break;
-  }
-
-
-<<<<<<< HEAD
-
-
-
-  if (info->syn == 1) {
-    //syn
-    if (info->ack == 1) {
-      //syn-ack
-      if (state.state == TS_SYN_SENT) {
-        if (state.rcv_nxt == info.seqnum) {
-          state.rcv_nxt = info.seqnum + 1;
-          state.rcv = info.window;
-          net_tx_tcp(m, raddr, lport, rport, state); //needs to send an ack
-          state.state = ESTAB;
-          return;
-        } else {
-          panic("SEQ NUMBER MISMATCH");
-        }
-      } else {
-        panic("RECEIVED SYN-ACK IN NOT SYN_SENT STATE");
-      }
-    } else {
-      //normal syn
-      if (state.state == TS_LISTEN) {
-        state.irs = info.seqnum;
-        state.rcv_nxt = info.seqnum + 1;
-        state.rcv = info.window;
-        net_tx_tcp(m, raddr, lport, rport, state); //needs to send syn-ack
-        state.state = TS_SYN_RECV;
-        return;
-      } else {
-        panic("RECEIVED SYN IN NOT LISTENING STATE");
-      }
-    }
-=======
->>>>>>> 53826e0a340a342b9df53a685a9fe7a6808a12af
-  } else {
-    //not syn
-    if (m->len == 0) {
-      //an ack
-      // if (info.acknum == )
-
-    } else {
-      //data we should process
-      mbufq_pushtail(&si->rxq, m);
-      release(&si->lock);
-      wakeup(&si->rxq);
-      return;
-    }
   }
 
 dump:
