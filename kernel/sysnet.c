@@ -276,103 +276,101 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
   }
   // printf("%p", si);
   release(&lock);
-  if (si) {
-    acquire(&si->lock);
-    state = si->tcp;
-    switch (state.state)
-    {
-      case TS_SEND_SYN:
+  if (!si)
+    goto dump;
 
-        break
-      case TS_LISTEN:
+  acquire(&si->lock);
+  state = si->tcp;
+  switch (state.state)
+  {
+    case TS_SEND_SYN:
 
-        break
-      case TS_SYN_SENT:
+      break
+    case TS_LISTEN:
 
-        break
-      case TS_SYN_RECV:
+      break
+    case TS_SYN_SENT:
 
-        break
-      case TS_ESTAB:
+      break
+    case TS_SYN_RECV:
 
-        break
-      case TS_SEND_FIN:
+      break
+    case TS_ESTAB:
+
+      break
+    case TS_SEND_FIN:
+
+      break;
+    case TS_FIN_W1:
+      break;
+    case TS_FIN_W2:
+      break;
+    case TS_CLOSING:
+      break;
+    case TS_TIME_W:
+      break;
+    case TS_CLOSE_W:
+      break;
+    case TS_LAST_ACK:
+      if (info->ack &&) {
+        si->tcp.state = TS_CLOSED;
         goto dump;
-        break;
-      case TS_FIN_W1:
-
-        break
-      case TS_FIN_W2:
-
-        break
-      case TS_CLOSING:
-
-        break
-      case TS_TIME_W:
-
-        break
-      case TS_CLOSE_W:
-
-        break
-      case TS_LAST_ACK:
-
-        break
-      default:
-        goto fail;
-        break;
-    }
+      }
+      break;
+    default:
+      goto fail;
+      break;
+  }
 
 
 
 
 
-    if (info->syn == 1) {
-      //syn
-      if (info->ack == 1) {
-        //syn-ack
-        if (state.state == TS_SYN_SENT) {
-          if (state.rcv_nxt == info.seqnum) {
-            state.rcv_nxt = info.seqnum + 1;
-            state.rcv = info.window;
-            net_tx_tcp(m, raddr, lport, rport, state); //needs to send an ack
-            state.state = ESTAB;
-            return;
-          } else {
-            panic("SEQ NUMBER MISMATCH");
-          }
-        } else {
-          panic("RECEIVED SYN-ACK IN NOT SYN_SENT STATE");
-        }
-      } else {
-        //normal syn
-        if (state.state == TS_LISTEN) {
-          state.irs = info.seqnum;
+  if (info->syn == 1) {
+    //syn
+    if (info->ack == 1) {
+      //syn-ack
+      if (state.state == TS_SYN_SENT) {
+        if (state.rcv_nxt == info.seqnum) {
           state.rcv_nxt = info.seqnum + 1;
           state.rcv = info.window;
-          net_tx_tcp(m, raddr, lport, rport, state); //needs to send syn-ack
-          state.state = TS_SYN_RECV;
+          net_tx_tcp(m, raddr, lport, rport, state); //needs to send an ack
+          state.state = ESTAB;
           return;
         } else {
-          panic("RECEIVED SYN IN NOT LISTENING STATE");
+          panic("SEQ NUMBER MISMATCH");
         }
+      } else {
+        panic("RECEIVED SYN-ACK IN NOT SYN_SENT STATE");
       }
     } else {
-      //not syn
-      if (m->len == 0) {
-        //an ack
-        // if (info.acknum == )
-
-      } else {
-        //data we should process
-        mbufq_pushtail(&si->rxq, m);
-        release(&si->lock);
-        wakeup(&si->rxq);
+      //normal syn
+      if (state.state == TS_LISTEN) {
+        state.irs = info.seqnum;
+        state.rcv_nxt = info.seqnum + 1;
+        state.rcv = info.window;
+        net_tx_tcp(m, raddr, lport, rport, state); //needs to send syn-ack
+        state.state = TS_SYN_RECV;
         return;
+      } else {
+        panic("RECEIVED SYN IN NOT LISTENING STATE");
       }
     }
-
-
   } else {
-    mbuffree(m);
+    //not syn
+    if (m->len == 0) {
+      //an ack
+      // if (info.acknum == )
+
+    } else {
+      //data we should process
+      mbufq_pushtail(&si->rxq, m);
+      release(&si->lock);
+      wakeup(&si->rxq);
+      return;
+    }
   }
+
+dump:
+  mbuffree(m);
 }
