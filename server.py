@@ -10,4 +10,5 @@ while True:
     buf, raddr = sock.recvfrom(4096)
     print >>sys.stderr, buf
     if buf:
+    	print(raddr)
         sent = sock.sendto(buf, raddr)
