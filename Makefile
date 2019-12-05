@@ -1,3 +1,4 @@
+
 K=kernel
 U=user
 
@@ -149,9 +150,6 @@ UPROGS=\
 	$U/_bcachetest\
 	$U/_alloctest\
 	$U/_bigfile\
-	$U/_tcptests\
-	$U/_tcpservertests\
-
 
 fs.img: mkfs/mkfs README user/xargstest.sh $(UPROGS)
 	mkfs/mkfs fs.img README user/xargstest.sh $(UPROGS)
@@ -181,10 +179,22 @@ FWDPORT = $(shell expr `id -u` % 5000 + 25999)
 QEMUEXTRA =
 QEMUOPTS = -machine virt -bios none -kernel $K/kernel -m 128M -smp $(CPUS) -nographic
 QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
-QEMUOPTS += -netdev user,id=net0 -object filter-dump,id=net0,netdev=net0,file=packets.pcap
+QEMUOPTS += -netdev socket,connect=127.0.0.1:8900,id=net0, -object filter-dump,id=net0,netdev=net0,file=packets.pcap
 QEMUOPTS += -device e1000,netdev=net0,bus=pcie.0
 
+QEMUOPTS1 = -machine virt -bios none -kernel $K/kernel -m 128M -smp $(CPUS) -nographic
+QEMUOPTS1 += -drive file=fs.img,if=none,format=raw,id=x0 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
+QEMUOPTS1 += -netdev socket,listen=:8900,id=net0, -object filter-dump,id=net0,netdev=net0,file=packets.pcap
+QEMUOPTS1 += -device e1000,netdev=net0,bus=pcie.0
+
 qemu: $K/kernel fs.img
+	$(QEMU) $(QEMUOPTS)
+
+qemu-server:  $K/kernel fs.img
+	$(QEMU) $(QEMUOPTS1)
+
+
+qemu-client:  $K/kernel fs.img
 	$(QEMU) $(QEMUOPTS)
 
 .gdbinit: .gdbinit.tmpl-riscv
@@ -203,8 +213,8 @@ server:
 tcpserver:
 	python2.7 tcpserver.py $(SERVERPORT)
 
-tcpserver:
-	python2.7 tcpserver.py $(SERVERPORT)
+tcpclient:
+	python2.7 tcpclient.py $(SERVERPORT)
 
 ping:
 	python2.7 ping.py $(FWDPORT)
