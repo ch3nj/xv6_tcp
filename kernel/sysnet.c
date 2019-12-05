@@ -284,8 +284,52 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
   switch (state.state)
   {
     case TS_SEND_SYN:
+      break
+    case TS_LISTEN:
+      if (info->syn == 1 && info->ack == 0) {
+        state.irs = info.seqnum;
+        state.rcv_nxt = info.seqnum + 1;
+        state.rcv = info.window;
+        net_tx_tcp(m, raddr, lport, rport, state); //needs to send syn-ack
+        state.state = TS_SYN_RECV;
+        release(&si->lock);
+        return;
+      }
+      break
+    case TS_SYN_SENT:
+      if (info->syn == 1 && info->ack == 1 && state.rcv_nxt == info->seqnum) {
+          state.snd_una = info.acknum + 1;
+          state.rcv = info.window;
+          net_tx_tcp(m, raddr, lport, rport, state); //needs to send an ack
+          state.state = ESTAB;
+          release(&si->lock);
+          return;
+        }
+      break
+    case TS_SYN_RECV:
+      if (info->syn == 0 && info->ack == 1 && state.rcv_nxt == info->seqnum) {
+          state.rcv_nxt = info.acknum + 1;
+          state.rcv = info.window;
+          state.state = ESTAB;
+          release(&si->lock);
+          return;
+        }
+      break
+    case TS_ESTAB:
+      if (info->syn == 0 && info->ack == 1) {
+        //legal packet
+        mbufq_pushtail(&si->rxq, m);
+        release(&si->lock);
+        wakeup(&si->rxq);
+        return;
+      }
 
       break
+    case TS_SEND_FIN:
+      goto dump;
+      break;
+    case TS_FIN_W1:
+      break;
     case TS_LISTEN:
 
       break
@@ -323,6 +367,7 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
   }
 
 
+<<<<<<< HEAD
 
 
 
@@ -356,6 +401,8 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
         panic("RECEIVED SYN IN NOT LISTENING STATE");
       }
     }
+=======
+>>>>>>> 53826e0a340a342b9df53a685a9fe7a6808a12af
   } else {
     //not syn
     if (m->len == 0) {
