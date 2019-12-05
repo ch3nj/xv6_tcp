@@ -121,6 +121,34 @@ sockclose(struct sock *si, int writable) {
   while(!mbufq_empty(&si->rxq)) {
     mbuffree(mbufq_pophead(&si->rxq));
   }
+
+  // if tcp, do the closing dance
+  if (si->type == SOCK_TYPE_TCP_CLIENT || si->type == SOCK_TYPE_TCP_SERVER) {
+    if (si->tcp.state == TS_ESTAB) {
+      si->tcp.state = TS_SEND_FIN;
+      struct mbuf *m = mbufalloc(MBUF_DEFAULT_HEADROOM);
+      net_tx_tcp(m, si->raddr, si->lport, si->rport, si->tcp);
+      si->tcp.snd_nxt++; // fin takes 1 sequence num
+      si->tcp.state = TS_FIN_W1;
+      while (!(si->tcp.state == TS_FIN_W2  ||
+               si->tcp.state == TS_TIME_W  ||
+               si->tcp.state == TS_CLOSING ||
+               si->tcp.state == TS_CLOSED)) {
+        sleep(&si->lock, &si->tcp);
+      }
+    }
+    if (si->tcp.state == TS_CLOSE_W) {
+      si->tcp.state = TS_SEND_FIN;
+      struct mbuf *m = mbufalloc(MBUF_DEFAULT_HEADROOM);
+      net_tx_tcp(m, si->raddr, si->lport, si->rport, si->tcp);
+      si->tcp.snd_nxt++; // fin takes 1 sequence num
+      si->tcp.state = TS_LAST_ACK;
+      while (si->tcp.state != TS_CLOSED) {
+        sleep(&si->lock, &si->tcp);
+      }
+    }
+  }
+
   // remove from sockets
   acquire(&lock);
   wakeup(&si->rxq);
@@ -236,9 +264,6 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
   struct sock *si;
   struct tcp_state state;
 
-
-
-
   acquire(&lock);
   si = sockets;
   while(si) {
@@ -272,8 +297,8 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
 
         break
       case TS_SEND_FIN:
-
-        break
+        goto dump;
+        break;
       case TS_FIN_W1:
 
         break
@@ -325,7 +350,7 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
           state.rcv_nxt = info.seqnum + 1;
           state.rcv = info.window;
           net_tx_tcp(m, raddr, lport, rport, state); //needs to send syn-ack
-          state.state = TS_SYN_RECV; 
+          state.state = TS_SYN_RECV;
           return;
         } else {
           panic("RECEIVED SYN IN NOT LISTENING STATE");

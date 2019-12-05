@@ -269,8 +269,10 @@ net_tx_tcp(struct mbuf *m, uint32 dip, uint16 sport, uint16 dport, struct tcp_st
       tcphdr->flags = TCP_FIN | TCP_ACK;
       break;
     case TS_FIN_W1:
+      printf("sending ack of fin from %d to %d\n", sport, dport);
       break;
     case TS_FIN_W2:
+      printf("sending ack of fin from %d to %d\n", sport, dport);
       break;
     case TS_CLOSING:
       break;

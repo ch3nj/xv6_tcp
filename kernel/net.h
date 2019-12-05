@@ -137,13 +137,14 @@ struct tcp {
 #define TS_SYN_SENT 3
 #define TS_SYN_RECV 4
 #define TS_ESTAB    5
-#define TS_SEND_FIN 12
 #define TS_FIN_W1   6
 #define TS_FIN_W2   7
 #define TS_CLOSING  8
 #define TS_TIME_W   9
 #define TS_CLOSE_W  10
 #define TS_LAST_ACK 11
+#define TS_SEND_FIN 12
+#define TS_CLOSED   13
 
 #define TCP_WINDOW ((1 << 16) - 1)
 
