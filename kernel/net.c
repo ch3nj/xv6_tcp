@@ -462,6 +462,7 @@ net_rx_tcp(struct mbuf *m, uint16 len, struct ip *iphdr)
   info.ack = ack;
   info.syn = syn;
   info.fin = fin;
+  info.window = window;
 
   // if (ack == 0) {
   //   panic("no ack bit set!");

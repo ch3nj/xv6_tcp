@@ -129,7 +129,7 @@ sockclose(struct sock *si, int writable) {
       si->tcp.state = TS_FIN_W1;
       while (!(si->tcp.state == TS_TIME_W  ||
                si->tcp.state == TS_CLOSED)) {
-        sleep(&si->lock, &si->tcp);
+        sleep(&si->tcp, &si->lock);
       }
     }
     if (si->tcp.state == TS_CLOSE_W) {
@@ -139,7 +139,7 @@ sockclose(struct sock *si, int writable) {
       si->tcp.snd_nxt++; // fin takes 1 sequence num
       si->tcp.state = TS_LAST_ACK;
       while (si->tcp.state != TS_CLOSED) {
-        sleep(&si->lock, &si->tcp);
+        sleep(&si->tcp, &si->lock);
       }
     }
   }
@@ -281,36 +281,36 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
 
   acquire(&si->lock);
   state = &si->tcp;
-  switch (state.state)
+  switch (state->state)
   {
     case TS_SEND_SYN:
       break;
     case TS_LISTEN:
       if (info->syn == 1 && info->ack == 0) {
-        state->irs = info.seqnum;
-        state->rcv_nxt = info.seqnum + 1;
-        state->rcv = info.window;
-        net_tx_tcp(m, raddr, lport, rport, state); //needs to send syn-ack
-        state.state = TS_SYN_RECV;
+        state->irs = info->seqnum;
+        state->rcv_nxt = info->seqnum + 1;
+        state->rcv_wnd = info->window;
+        net_tx_tcp(m, raddr, lport, rport, *state); //needs to send syn-ack
+        state->state = TS_SYN_RECV;
         release(&si->lock);
         return;
       }
       break;
     case TS_SYN_SENT:
-      if (info->syn == 1 && info->ack == 1 && state.rcv_nxt == info->seqnum) {
-          state.snd_una = info.acknum;
-          state.rcv = info.window;
-          net_tx_tcp(m, raddr, lport, rport, state); //needs to send an ack
-          state.state = ESTAB;
+      if (info->syn == 1 && info->ack == 1 && state->rcv_nxt == info->seqnum) {
+          state->snd_una = info->acknum;
+          state->rcv_wnd = info->window;
+          net_tx_tcp(m, raddr, lport, rport, *state); //needs to send an ack
+          state->state = TS_ESTAB;
           release(&si->lock);
           return;
         }
       break;
     case TS_SYN_RECV:
-      if (info->syn == 0 && info->ack == 1 && state.rcv_nxt == info->seqnum) {
-          state.rcv_nxt = info.seqnum + 1;
-          state.snd_wnd = info.window;
-          state.state = ESTAB;
+      if (info->syn == 0 && info->ack == 1 && state->rcv_nxt == info->seqnum) {
+          state->rcv_nxt = info->seqnum + 1;
+          state->snd_wnd = info->window;
+          state->state = TS_ESTAB;
           release(&si->lock);
           return;
         }
@@ -318,8 +318,8 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
     case TS_ESTAB:
       if (info->syn == 0 && info->ack == 1) {
         //legal packet
-        state.rcv_nxt = info.seqnum + 1;
-        state.snd_wnd = info.window;
+        state->rcv_nxt = info->seqnum + 1;
+        state->snd_wnd = info->window;
         mbufq_pushtail(&si->rxq, m);
         release(&si->lock);
         wakeup(&si->rxq);
