@@ -10,7 +10,7 @@ static void
 ping(uint16 sport, uint16 dport, int attempts)
 {
   int fd;
-  // char obuf[13] = "hello world!";
+  char obuf[13] = "hello world!";
   uint32 dst;
 
   // 10.0.2.2, which qemu remaps to the external host,
@@ -23,6 +23,14 @@ ping(uint16 sport, uint16 dport, int attempts)
   if((fd = connect(dst, sport, dport, SOCK_TYPE_TCP_CLIENT)) < 0){
     fprintf(2, "ping: connect() failed\n");
     exit(1);
+  }
+
+  printf("hi2\n");
+  for(int i = 0; i < attempts; i++) {
+    if(write(fd, obuf, sizeof(obuf)) < 0){
+      fprintf(2, "ping: send() failed\n");
+      exit(1);
+    }
   }
   close(fd);
 }

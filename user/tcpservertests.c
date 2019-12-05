@@ -24,7 +24,9 @@ echo(uint16 sport)
     fprintf(2, "echo: recv() failed\n");
     exit(1);
   }
-
+  printf("\"%s\"", ibuf);
+  printf("%d\n", cc);
+  close(fd);
 }
 
 

@@ -502,32 +502,21 @@ net_rx_ip(struct mbuf *m)
   if (!iphdr)
 	  goto fail;
 
-  printf("ip1\n");
-
   // check IP version and header len
   if (iphdr->ip_vhl != ((4 << 4) | (20 >> 2)))
     goto fail;
-
-  printf("ip2\n");
 
   // validate IP checksum
   if (in_cksum((unsigned char *)iphdr, sizeof(*iphdr)))
     goto fail;
 
-  printf("ip3\n");
-
   // can't support fragmented IP packets
   if (htons(iphdr->ip_off) != 0)
     goto fail;
 
-  printf("ip4\n");
-
   // is the packet addressed to us?
-  printf("%d, %d\n", htonl(iphdr->ip_dst), local_ip);
   if (htonl(iphdr->ip_dst) != local_ip)
     goto fail;
-
-  printf("passed ip tests\n");
 
   // supports UDP and TCP
   if (iphdr->ip_p == IPPROTO_UDP) {

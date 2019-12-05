@@ -270,12 +270,10 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
   struct sock *si;
   struct tcp_state *state;
 
-  printf("tcp 1\n");
 
   acquire(&lock);
   si = sockets;
   while(si) {
-    printf("%d, %d, %d, %d, %d, %d\n", si->raddr, si->lport, si->rport, si->tcp.state, lport, info->syn);
     if (si->raddr == raddr &&
         si->lport == lport &&
 	      si->rport == rport) {
@@ -288,13 +286,11 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
     }
     si = si->next;
   }
-  printf("tcp 2\n");
 
   release(&lock);
   if (!si)
     goto fail;
 
-  printf("tcp 3\n");
 
   acquire(&si->lock);
   state = &si->tcp;
