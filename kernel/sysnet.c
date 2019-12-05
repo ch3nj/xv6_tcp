@@ -52,6 +52,7 @@ sockalloc(struct file **f, uint32 raddr, uint32 lport, uint32 rport, uint32 type
   si->rport = rport;
   si->type = type;
   initlock(&si->lock, "sock");
+  acquire(&si->lock);
   mbufq_init(&si->rxq);
   (*f)->type = FD_SOCK;
   (*f)->readable = 1;
@@ -65,6 +66,7 @@ sockalloc(struct file **f, uint32 raddr, uint32 lport, uint32 rport, uint32 type
         pos->lport == lport &&
 	      pos->rport == rport) {
       release(&lock);
+      release(&si->lock);
       goto bad;
     }
     pos = pos->next;
@@ -73,7 +75,6 @@ sockalloc(struct file **f, uint32 raddr, uint32 lport, uint32 rport, uint32 type
   sockets = si;
   release(&lock);
 
-  // do we need locking here?
   if (type == SOCK_TYPE_TCP_CLIENT || type == SOCK_TYPE_TCP_SERVER) {
     // create random initial sequence number
     // uint32 iss = rand() & 0xff;
@@ -84,7 +85,7 @@ sockalloc(struct file **f, uint32 raddr, uint32 lport, uint32 rport, uint32 type
     si->tcp.iss = iss;
     si->tcp.snd_una = iss + 1;
     si->tcp.snd_nxt = iss + 1;
-    si->tcp.snd_wnd = TCP_WINDOW;
+    si->tcp.rcv_wnd = TCP_WINDOW;
   }
   if (type == SOCK_TYPE_TCP_CLIENT) {
     si->tcp.state = TS_SEND_SYN;
@@ -95,6 +96,7 @@ sockalloc(struct file **f, uint32 raddr, uint32 lport, uint32 rport, uint32 type
   if (type == SOCK_TYPE_TCP_SERVER) {
     si->tcp.state = TS_LISTEN;
   }
+  release(&si->lock);
   return 0;
 
 bad:
@@ -117,10 +119,7 @@ void
 sockclose(struct sock *si, int writable) {
   struct sock *pos, *next;
   acquire(&si->lock);
-  // free outstanding mbufs
-  while(!mbufq_empty(&si->rxq)) {
-    mbuffree(mbufq_pophead(&si->rxq));
-  }
+
 
   // if tcp, do the closing dance
   if (si->type == SOCK_TYPE_TCP_CLIENT || si->type == SOCK_TYPE_TCP_SERVER) {
@@ -130,9 +129,7 @@ sockclose(struct sock *si, int writable) {
       net_tx_tcp(m, si->raddr, si->lport, si->rport, si->tcp);
       si->tcp.snd_nxt++; // fin takes 1 sequence num
       si->tcp.state = TS_FIN_W1;
-      while (!(si->tcp.state == TS_FIN_W2  ||
-               si->tcp.state == TS_TIME_W  ||
-               si->tcp.state == TS_CLOSING ||
+      while (!(si->tcp.state == TS_TIME_W  ||
                si->tcp.state == TS_CLOSED)) {
         sleep(&si->tcp, &si->lock);
       }
@@ -147,6 +144,11 @@ sockclose(struct sock *si, int writable) {
         sleep(&si->tcp, &si->lock);
       }
     }
+  }
+
+  // free outstanding mbufs
+  while(!mbufq_empty(&si->rxq)) {
+    mbuffree(mbufq_pophead(&si->rxq));
   }
 
   // remove from sockets
@@ -288,9 +290,9 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
     case TS_LISTEN:
       if (info->syn == 1 && info->ack == 0) {
         state->irs = info->seqnum;
-        state->rcv_nxt = info->seqnum + 1;
-        state->rcv_wnd = info->window;
-        net_tx_tcp(m, raddr, lport, rport, *state); //needs to send syn-ack
+        state->rcv_nxt = info->seqnum + 1; // + m->len
+        state->snd_wnd = info->window;
+        net_tx_tcp(m, raddr, lport, rport, *state); // needs to send syn-ack
         state->state = TS_SYN_RECV;
         release(&si->lock);
         return;
@@ -320,48 +322,73 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
     case TS_ESTAB:
       if (info->syn == 0 && info->ack == 1) {
         //legal packet
-        if (m->len > 0) {
-          //contains data
-          state->rcv_nxt = info->seqnum + 1;
-          state->snd_wnd = info->window;
-          state->snd_una++;
-          mbufq_pushtail(&si->rxq, m);
-
-          net_tx_tcp(m, raddr, lport, rport, *state); //needs to send an ack
-          release(&si->lock);
-          wakeup(&si->rxq);
-          return;
-          }
-      } else {
-
+        state->rcv_nxt = info->seqnum + 1;
+        state->snd_wnd = info->window;
+        goto deliver;
       }
-
+      goto dump;
       break;
     case TS_SEND_FIN:
       goto dump;
       break;
     case TS_FIN_W1:
-      break;
-    case TS_FIN_W2:
-      break;
-    case TS_CLOSING:
-      break;
-    case TS_TIME_W:
-      break;
-    case TS_CLOSE_W:
-      break;
-    case TS_LAST_ACK:
-      if (info->ack && info->acknum == si->snd_nxt) {
-        si->tcp.state = TS_CLOSED;
+      if (info->fin) {
+        struct mbuf *m = mbufalloc(MBUF_DEFAULT_HEADROOM);
+        net_tx_tcp(m, raddr, lport, rport, *state); // needs to send an ack
+        if (info->ack && info->acknum == state->snd_nxt) {
+          state->state = TS_TIME_W;
+          wakeup(&si->tcp);
+          goto dump;
+        }
+        state->state = TS_CLOSING;
         goto dump;
       }
-
+      if (info->ack && info->acknum == state->snd_nxt) {
+        state->state = TS_FIN_W2;
+        goto dump;
+      }
+      break;
+    case TS_FIN_W2:
+      if (info->fin) {
+        struct mbuf *m = mbufalloc(MBUF_DEFAULT_HEADROOM);
+        net_tx_tcp(m, raddr, lport, rport, *state); // needs to send an ack
+        state->state = TS_TIME_W;
+        wakeup(&si->tcp);
+        goto dump;
+      }
+      break;
+    case TS_CLOSING:
+      if (info->ack && info->acknum == state->snd_nxt) {
+        state->state = TS_TIME_W;
+        wakeup(&si->tcp);
+        goto dump;
+      }
+      break;
+    case TS_TIME_W:
+      wakeup(&si->tcp);
+      goto dump;
+      break;
+    case TS_CLOSE_W:
+      goto dump;
+      break;
+    case TS_LAST_ACK:
+      if (info->ack && info->acknum == state->snd_nxt) {
+        state->state = TS_CLOSED;
+        wakeup(&si->tcp);
+        goto dump;
+      }
       break;
     default:
-      goto fail;
+      goto dump;
       break;
   }
 
+deliver:
+  mbufq_pushtail(&si->rxq, m);
+  release(&si->lock);
+  wakeup(&si->rxq);
+  return;
 dump:
+  release(&si->lock);
   mbuffree(m);
 }
