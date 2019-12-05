@@ -150,6 +150,8 @@ UPROGS=\
 	$U/_bcachetest\
 	$U/_alloctest\
 	$U/_bigfile\
+	$U/_tcptests\
+	$U/_tcpservertests\
 
 fs.img: mkfs/mkfs README user/xargstest.sh $(UPROGS)
 	mkfs/mkfs fs.img README user/xargstest.sh $(UPROGS)
@@ -193,6 +195,8 @@ qemu: $K/kernel fs.img
 qemu-server:  $K/kernel fs.img
 	$(QEMU) $(QEMUOPTS1)
 
+qemu-server-gdb:  $K/kernel .gdbinit fs.img
+	$(QEMU) $(QEMUOPTS1) -S $(QEMUGDB)
 
 qemu-client:  $K/kernel fs.img
 	$(QEMU) $(QEMUOPTS)

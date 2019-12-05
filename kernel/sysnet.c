@@ -270,9 +270,12 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
   struct sock *si;
   struct tcp_state *state;
 
+  printf("tcp 1\n");
+
   acquire(&lock);
   si = sockets;
   while(si) {
+    printf("%d, %d, %d, %d, %d, %d\n", si->raddr, si->lport, si->rport, si->tcp.state, lport, info->syn);
     if (si->raddr == raddr &&
         si->lport == lport &&
 	      si->rport == rport) {
@@ -280,15 +283,18 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
     }
     if (si->lport == lport &&
         si->tcp.state == TS_LISTEN &&
-        info->syn == 1) {
+        info->syn) {
       break;
     }
     si = si->next;
   }
-  // printf("%p", si);
+  printf("tcp 2\n");
+
   release(&lock);
   if (!si)
-    goto dump;
+    goto fail;
+
+  printf("tcp 3\n");
 
   acquire(&si->lock);
   state = &si->tcp;
@@ -299,7 +305,7 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
       goto dump;
       break;
     case TS_LISTEN:
-      if (info->syn == 1 && info->ack == 0) {
+      if (info->syn && info->ack == 0) {
         si->raddr = raddr;
         si->rport = rport;
         state->irs = info->seqnum;
@@ -314,7 +320,7 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
       goto dump;
       break;
     case TS_SYN_SENT:
-      if (info->syn == 1 && info->ack == 1 && state->snd_una <= info->acknum) {
+      if (info->syn && info->ack && state->snd_una <= info->acknum) {
           state->snd_una = info->acknum;
           state->irs = info->seqnum;
           state->rcv_nxt = info->seqnum + 1; // TODO: + m->len
@@ -328,7 +334,7 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
         }
       break;
     case TS_SYN_RECV:
-      if (info->syn == 0 && info->ack == 1 && state->snd_una <= info->acknum) {
+      if (!info->syn && info->ack && state->snd_una <= info->acknum) {
           state->snd_una = info->acknum;
           state->rcv_nxt = info->seqnum; // TODO: + m->len
           state->snd_wnd = info->window;
@@ -339,7 +345,7 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
         }
       break;
     case TS_ESTAB:
-      if (info->syn == 0 && info->ack == 1) {
+      if (!info->syn && info->ack) {
         //legal packet
         state->snd_una = info->acknum;
         state->rcv_nxt = info->seqnum; // TODO: + m->len
@@ -411,5 +417,6 @@ deliver:
   return;
 dump:
   release(&si->lock);
+fail:
   mbuffree(m);
 }

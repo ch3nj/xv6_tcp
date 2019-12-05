@@ -10,12 +10,12 @@ static void
 ping(uint16 sport, uint16 dport, int attempts)
 {
   int fd;
-  char obuf[13] = "hello world!";
+  // char obuf[13] = "hello world!";
   uint32 dst;
 
   // 10.0.2.2, which qemu remaps to the external host,
   // i.e. the machine you're running qemu on.
-  dst = (10 << 24) | (0 << 16) | (2 << 8) | (2 << 0);
+  dst = (10 << 24) | (0 << 16) | (2 << 8) | (15 << 0);
 
   // you can send a UDP packet to any Internet address
   // by using a different dst.
