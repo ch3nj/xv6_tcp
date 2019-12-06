@@ -220,20 +220,26 @@ net_tx_udp(struct mbuf *m, uint32 dip,
 
 // TODO: implement checksum
 uint16
-tcp_checksum(struct mbuf *m)
+tcp_checksum(struct mbuf *m, uint32 dip)
 {
-  // uint32 sum = 0;
-  // int i = m->len;
-  // while(i>0)
-  // {
-  //         sum+=*buffer;
-  //         buffer+=1;
-  //         i-=2;
-  // }
-  // sum = (sum >> 16) + (sum & htonl(0x0000ffff));
-  // sum += (sum >> 16);
-  // return ~sum;
-  return 0;
+  uint32 sum = 0;
+  int i = m->len;
+  uint16 *word = (uint16*)m->head;
+  while(i > 1)
+  {
+    sum += htons(*word++);
+    i -= sizeof(uint16);
+  }
+  if (i) {
+    sum += *(uint8*)word;
+  }
+  sum += (dip >> 16) + (dip & 0xffff);
+  sum += (local_ip >> 16) + (local_ip & 0xffff);
+  sum += IPPROTO_TCP;
+  sum += m->len;
+  sum = (sum >> 16) + (sum & 0xffff);
+  sum += (sum >> 16);
+  return ~(sum & 0xffff);
 }
 
 // sends a TCP packet
@@ -254,9 +260,9 @@ net_tx_tcp(struct mbuf *m, uint32 dip, uint16 sport, uint16 dport, struct tcp_st
   tcphdr->acknum = htonl(tcp.rcv_nxt);
   tcphdr->window = htons(tcp.rcv_wnd);
   tcphdr->offset = 0x60; // 1 line of no options
-  tcphdr->sum = 0;
   tcphdr->urgptr = 0;
   tcphdr->flags = TCP_ACK;
+  tcphdr->sum = 0;
   switch (tcp.state)
   {
     case TS_SEND_SYN:
@@ -300,7 +306,7 @@ net_tx_tcp(struct mbuf *m, uint32 dip, uint16 sport, uint16 dport, struct tcp_st
       goto fail;
       break;
   }
-  tcphdr->sum = tcp_checksum(m);
+  tcphdr->sum = htons(tcp_checksum(m, dip));
   // now on to the IP layer
   net_tx_ip(m, IPPROTO_TCP, dip);
   return;

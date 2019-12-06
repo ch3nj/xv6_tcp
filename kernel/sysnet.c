@@ -364,6 +364,8 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
         if (info->fin) {
           printf("recv estab fin\n");
           state->rcv_nxt = info->seqnum + m->len + 1; // TODO: logic if out of order
+          struct mbuf *emp = mbufalloc(MBUF_DEFAULT_HEADROOM);
+          net_tx_tcp(emp, raddr, lport, rport, *state); // send an ack
           state->state = TS_CLOSE_W;
         }
         wakeup(&si->tcp);
