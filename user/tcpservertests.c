@@ -7,7 +7,7 @@
 // port 25600
 //
 static void
-echo(uint16 sport)
+echo(uint16 sport, uint64 echoes)
 {
   int fd;
 
@@ -17,11 +17,8 @@ echo(uint16 sport)
     exit(1);
   }
 
-  int pid = fork();
-  if (pid == 0) {
-    sleep(100);
-    close(fd);
-  } else {
+
+  for (int i = 0; i < echoes; ++i) {
     printf("read\n");
     char ibuf[128];
     int cc = read(fd, ibuf, sizeof(ibuf));
@@ -30,12 +27,15 @@ echo(uint16 sport)
       exit(1);
     }
 
-    printf("write\n");
+    printf("write %d, %c\n", cc, ibuf[0]);
     if(write(fd, ibuf, sizeof(ibuf)) < 0){
       fprintf(2, "echo: send() failed\n");
       exit(1);
     }
   }
+
+  sleep(5);
+  close(fd);
 }
 
 
@@ -49,7 +49,7 @@ main(int argc, char *argv[])
   printf("nettests running on port %d\n", dport);
 
   printf("testing listen: ");
-  echo(25600);
+  echo(25600, 100);
   printf("OK\n");
 
   exit(0);

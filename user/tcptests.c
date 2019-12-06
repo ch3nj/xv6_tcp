@@ -25,18 +25,21 @@ ping(uint16 sport, uint16 dport, int attempts)
     exit(1);
   }
 
-  printf("hi2\n");
-  if(write(fd, obuf, sizeof(obuf)) < 0){
-    fprintf(2, "ping: send() failed\n");
-    exit(1);
-  }
+  for (int i = 0; i < attempts; ++i) {
+    printf("hi2\n");
+    if(write(fd, obuf, sizeof(obuf)) < 0){
+      fprintf(2, "ping: send() failed\n");
+      exit(1);
+    }
 
-  printf("hi3\n");
-  char ibuf[128];
-  int cc = read(fd, ibuf, sizeof(ibuf));
-  if(cc < 0){
-    fprintf(2, "ping: recv() failed\n");
-    exit(1);
+    printf("hi3\n");
+    char ibuf[128];
+    int cc = read(fd, ibuf, sizeof(ibuf));
+    if(cc < 0){
+      fprintf(2, "ping: recv() failed\n");
+      exit(1);
+    }
+    printf("got %d, %c\n", cc, ibuf[0]);
   }
   close(fd);
 }
@@ -51,8 +54,14 @@ main(int argc, char *argv[])
   printf("nettests running on port %d\n", dport);
 
   printf("testing one ping: ");
-  ping(2000, dport, 2);
+  ping(2000, dport, 100);
   printf("OK\n");
+
+  // printf("testing multiple ping: ");
+  // for (int i = 0; i < 100; ++i) {
+  //   ping(2000, dport, 1);
+  // }
+  // printf("OK\n");
 
   exit(0);
 

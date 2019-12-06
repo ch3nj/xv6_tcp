@@ -355,13 +355,14 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
       break;
     case TS_ESTAB:
       printf("recv estab\n");
-      if (!info->syn && info->ack) {
+      if (!info->syn && info->ack && state->snd_una <= info->acknum) {
         printf("recv estab legal\n");
         //legal packet
         state->snd_una = info->acknum;
         state->rcv_nxt = info->seqnum + m->len; // TODO: logic if out of order
         state->snd_wnd = info->window;
         if (info->fin) {
+          printf("recv estab fin\n");
           state->rcv_nxt = info->seqnum + m->len + 1; // TODO: logic if out of order
           state->state = TS_CLOSE_W;
         }
