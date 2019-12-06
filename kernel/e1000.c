@@ -104,7 +104,6 @@ e1000_transmit(struct mbuf *m)
   // the TX descriptor ring so that the e1000 sends it. Stash
   // a pointer so that it can be freed after sending.
   //
-  printf("T1\n");
   acquire(&e1000_lock_tx);
   int current_position = regs[E1000_TDT];
   if ((tx_ring[current_position].status & E1000_TXD_STAT_DD) == 0) {
@@ -115,7 +114,6 @@ e1000_transmit(struct mbuf *m)
   //do a conditional check
   if (tx_mbufs[current_position] != 0)
   	mbuffree(tx_mbufs[current_position]);
-  printf("T2\n");
   tx_ring[current_position].addr = (uint64)m->head;
   tx_ring[current_position].length = m->len;
   tx_ring[current_position].status = 0;
@@ -132,7 +130,6 @@ e1000_transmit(struct mbuf *m)
   int next_position = (current_position + 1)%TX_RING_SIZE;
   regs[E1000_TDT] = next_position;
   release(&e1000_lock_tx);
-  printf("finished transmitting\n");
   return 0;
 }
 
@@ -145,18 +142,15 @@ e1000_recv(void)
   // Check for packets that have arrived from the e1000
   // Create and deliver an mbuf for each packet (using net_rx()).
   //
-  printf("REC1\n");
   acquire(&e1000_lock_rx);
   while(1) {
     int next_position = (regs[E1000_RDT] + 1)%RX_RING_SIZE;
     // struct rx_desc next_desc = rx_ring[next_position];
     if ((rx_ring[next_position].status & E1000_RXD_STAT_DD) == 0) {
     	//nothing to receive
-      printf("nothing more to receive\n");
       release(&e1000_lock_rx);
     	return;
     }
-    printf("REC2\n");
     struct mbuf *next_mbuf = rx_mbufs[next_position];
     mbufput(next_mbuf, rx_ring[next_position].length);
     net_rx(next_mbuf);
@@ -172,14 +166,12 @@ e1000_recv(void)
     regs[E1000_RDT] = next_position;
   }
   release(&e1000_lock_rx);
-  printf("finished receiving\n");
   return;
 }
 
 void
 e1000_intr(void)
 {
-  printf("generating interrupt!\n");
 
   e1000_recv();
   // tell the e1000 we've seen this interrupt;

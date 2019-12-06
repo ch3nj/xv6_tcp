@@ -11,22 +11,31 @@ echo(uint16 sport)
 {
   int fd;
 
-  printf("hi1, %d\n", sport);
+  printf("listen, %d\n", sport);
   if((fd = listen(sport)) < 0){
     fprintf(2, "ping: listen() failed\n");
     exit(1);
   }
 
-  printf("hi2\n");
-  char ibuf[128];
-  int cc = read(fd, ibuf, sizeof(ibuf));
-  if(cc < 0){
-    fprintf(2, "echo: recv() failed\n");
-    exit(1);
+  int pid = fork();
+  if (pid == 0) {
+    sleep(100);
+    close(fd);
+  } else {
+    printf("read\n");
+    char ibuf[128];
+    int cc = read(fd, ibuf, sizeof(ibuf));
+    if(cc < 0){
+      fprintf(2, "echo: recv() failed\n");
+      exit(1);
+    }
+
+    printf("write\n");
+    if(write(fd, ibuf, sizeof(ibuf)) < 0){
+      fprintf(2, "echo: send() failed\n");
+      exit(1);
+    }
   }
-  printf("\"%s\"", ibuf);
-  printf("%d\n", cc);
-  close(fd);
 }
 
 

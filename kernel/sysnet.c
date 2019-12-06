@@ -127,7 +127,7 @@ sockclose(struct sock *si, int writable) {
       si->tcp.state = TS_SEND_FIN;
       struct mbuf *m = mbufalloc(MBUF_DEFAULT_HEADROOM);
       net_tx_tcp(m, si->raddr, si->lport, si->rport, si->tcp);
-      si->tcp.snd_nxt++; // fin takes 1 sequence num
+      si->tcp.snd_nxt = si->tcp.snd_nxt + 1; // fin takes 1 sequence num
       si->tcp.state = TS_FIN_W1;
       while (!(si->tcp.state == TS_TIME_W  ||
                si->tcp.state == TS_CLOSED)) {
@@ -138,7 +138,7 @@ sockclose(struct sock *si, int writable) {
       si->tcp.state = TS_SEND_FIN;
       struct mbuf *m = mbufalloc(MBUF_DEFAULT_HEADROOM);
       net_tx_tcp(m, si->raddr, si->lport, si->rport, si->tcp);
-      si->tcp.snd_nxt++; // fin takes 1 sequence num
+      si->tcp.snd_nxt = si->tcp.snd_nxt + 1; // fin takes 1 sequence num
       si->tcp.state = TS_LAST_ACK;
       while (si->tcp.state != TS_CLOSED) {
         sleep(&si->tcp, &si->lock);
@@ -297,57 +297,78 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
   switch (state->state)
   {
     case TS_SEND_SYN:
+      printf("recv send syn\n");
       wakeup(&si->tcp);
       goto dump;
       break;
     case TS_LISTEN:
+      printf("recv listen\n");
       if (info->syn && info->ack == 0) {
+        printf("recv listen syn\n");
         si->raddr = raddr;
         si->rport = rport;
         state->irs = info->seqnum;
-        state->rcv_nxt = info->seqnum + 1; // TODO: + m->len
+        state->rcv_nxt = info->seqnum + 1 + m->len;
         state->snd_wnd = info->window;
         struct mbuf *emp = mbufalloc(MBUF_DEFAULT_HEADROOM);
         net_tx_tcp(emp, raddr, lport, rport, *state); // send syn-ack
         state->state = TS_SYN_RECV;
         wakeup(&si->tcp);
-        goto dump; // TODO: if m->len > 0, deliver
+        if (m->len > 0)
+          goto deliver;
+        goto dump;
       }
       goto dump;
       break;
     case TS_SYN_SENT:
+      printf("recv syn sent\n");
       if (info->syn && info->ack && state->snd_una <= info->acknum) {
+          printf("recv syn sent synack\n");
           state->snd_una = info->acknum;
           state->irs = info->seqnum;
-          state->rcv_nxt = info->seqnum + 1; // TODO: + m->len
+          state->rcv_nxt = info->seqnum + 1 + m->len;
           state->snd_wnd = info->window;
           struct mbuf *emp = mbufalloc(MBUF_DEFAULT_HEADROOM);
           net_tx_tcp(emp, raddr, lport, rport, *state); // send an ack
           state->state = TS_ESTAB;
           wakeup(&si->tcp);
-          goto dump; // TODO: if m->len > 0, deliver
+          if (m->len > 0)
+            goto deliver;
+          goto dump;
           return;
         }
       break;
     case TS_SYN_RECV:
+      printf("recv syn recv\n");
       if (!info->syn && info->ack && state->snd_una <= info->acknum) {
+          printf("recv syn recv ack\n");
           state->snd_una = info->acknum;
-          state->rcv_nxt = info->seqnum; // TODO: + m->len
+          state->rcv_nxt = info->seqnum + m->len;
           state->snd_wnd = info->window;
           state->state = TS_ESTAB;
           wakeup(&si->tcp);
-          goto dump; // TODO: if m->len > 0, deliver
+          if (m->len > 0)
+            goto deliver;
+          goto dump;
           return;
         }
       break;
     case TS_ESTAB:
+      printf("recv estab\n");
       if (!info->syn && info->ack) {
+        printf("recv estab legal\n");
         //legal packet
         state->snd_una = info->acknum;
-        state->rcv_nxt = info->seqnum; // TODO: + m->len
+        state->rcv_nxt = info->seqnum + m->len; // TODO: logic if out of order
         state->snd_wnd = info->window;
+        if (info->fin) {
+          state->rcv_nxt = info->seqnum + m->len + 1; // TODO: logic if out of order
+          state->state = TS_CLOSE_W;
+        }
         wakeup(&si->tcp);
-        goto deliver;
+        if (m->len > 0)
+          goto deliver;
+        goto dump;
       }
       goto dump;
       break;
@@ -355,12 +376,18 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
       goto dump;
       break;
     case TS_FIN_W1:
+      printf("recv fin w1\n");
       if (info->fin) {
+        printf("recv fin w1 fin\n");
         struct mbuf *emp = mbufalloc(MBUF_DEFAULT_HEADROOM);
+        state->rcv_nxt = info->seqnum + 1 + m->len; // TODO: logic if out of order
         net_tx_tcp(emp, raddr, lport, rport, *state); // needs to send an ack
         if (info->ack && info->acknum == state->snd_nxt) {
           state->state = TS_TIME_W;
+          printf("recv fin w1 wake\n");
           wakeup(&si->tcp);
+          if (m->len > 0)
+            goto deliver;
           goto dump;
         }
         state->state = TS_CLOSING;
@@ -372,31 +399,41 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
       }
       break;
     case TS_FIN_W2:
+      printf("recv fin w2\n");
       if (info->fin) {
+        state->rcv_nxt = info->seqnum + 1 + m->len; // TODO: logic if out of order
         struct mbuf *emp = mbufalloc(MBUF_DEFAULT_HEADROOM);
         net_tx_tcp(emp, raddr, lport, rport, *state); // needs to send an ack
         state->state = TS_TIME_W;
+        printf("recv fin w2 wake\n");
         wakeup(&si->tcp);
         goto dump;
       }
       break;
     case TS_CLOSING:
+      printf("recv closing\n");
       if (info->ack && info->acknum == state->snd_nxt) {
+        printf("recv closing wake\n");
         state->state = TS_TIME_W;
         wakeup(&si->tcp);
         goto dump;
       }
       break;
     case TS_TIME_W:
+      printf("recv time w\n");
       wakeup(&si->tcp);
       goto dump;
       break;
     case TS_CLOSE_W:
+      printf("recv close w\n");
+      wakeup(&si->tcp);
       goto dump;
       break;
     case TS_LAST_ACK:
+      printf("recv last ack\n");
       if (info->ack && info->acknum == state->snd_nxt) {
         state->state = TS_CLOSED;
+        printf("recv last ack wake\n");
         wakeup(&si->tcp);
         goto dump;
       }

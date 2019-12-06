@@ -26,11 +26,17 @@ ping(uint16 sport, uint16 dport, int attempts)
   }
 
   printf("hi2\n");
-  for(int i = 0; i < attempts; i++) {
-    if(write(fd, obuf, sizeof(obuf)) < 0){
-      fprintf(2, "ping: send() failed\n");
-      exit(1);
-    }
+  if(write(fd, obuf, sizeof(obuf)) < 0){
+    fprintf(2, "ping: send() failed\n");
+    exit(1);
+  }
+
+  printf("hi3\n");
+  char ibuf[128];
+  int cc = read(fd, ibuf, sizeof(ibuf));
+  if(cc < 0){
+    fprintf(2, "ping: recv() failed\n");
+    exit(1);
   }
   close(fd);
 }
