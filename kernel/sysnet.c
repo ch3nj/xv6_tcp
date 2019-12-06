@@ -335,7 +335,6 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
           if (m->len > 0)
             goto deliver;
           goto dump;
-          return;
         }
       break;
     case TS_SYN_RECV:
@@ -350,26 +349,36 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
           if (m->len > 0)
             goto deliver;
           goto dump;
-          return;
         }
       break;
     case TS_ESTAB:
       printf("recv estab\n");
+      //snd_una <= info->acknum means old ack packet
+      //state->rcv_nxt < info->seqnum means this packet should be ignored (we didnt get the packets between)
       if (!info->syn && info->ack && state->snd_una <= info->acknum) {
         printf("recv estab legal\n");
         //legal packet
-        state->snd_una = info->acknum;
-        state->rcv_nxt = info->seqnum + m->len; // TODO: logic if out of order
-        state->snd_wnd = info->window;
-        if (info->fin) {
-          printf("recv estab fin\n");
-          state->rcv_nxt = info->seqnum + m->len + 1; // TODO: logic if out of order
-          state->state = TS_CLOSE_W;
+        if (state->rcv_nxt == info->seqnum) {
+          //next packet in the order we're expecting
+          state->snd_una = info->acknum;
+          state->rcv_nxt = info->seqnum + m->len;
+          state->snd_wnd = info->window;
+          if (info->fin) {
+            printf("recv estab fin\n");
+            state->rcv_nxt = info->seqnum + m->len + 1;
+            state->state = TS_CLOSE_W;
+          }
+          wakeup(&si->tcp);
+          if (m->len > 0)
+            goto deliver;
+          goto dump;
+        } else {
+          //jumped a packet in the middle, but we still send an ack
+          struct mbuf *emp = mbufalloc(MBUF_DEFAULT_HEADROOM);
+          net_tx_tcp(emp, raddr, lport, rport, *state); // send an ack
+          goto dump;
         }
-        wakeup(&si->tcp);
-        if (m->len > 0)
-          goto deliver;
-        goto dump;
+        
       }
       goto dump;
       break;
@@ -380,19 +389,28 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
       printf("recv fin w1\n");
       if (info->fin) {
         printf("recv fin w1 fin\n");
-        struct mbuf *emp = mbufalloc(MBUF_DEFAULT_HEADROOM);
-        state->rcv_nxt = info->seqnum + 1 + m->len; // TODO: logic if out of order
-        net_tx_tcp(emp, raddr, lport, rport, *state); // needs to send an ack
-        if (info->ack && info->acknum == state->snd_nxt) {
-          state->state = TS_TIME_W;
-          printf("recv fin w1 wake\n");
-          wakeup(&si->tcp);
-          if (m->len > 0)
-            goto deliver;
+        if (state->rcv_nxt == info->seqnum) {
+          //next packet in the order we're expecting
+          struct mbuf *emp = mbufalloc(MBUF_DEFAULT_HEADROOM);
+          state->rcv_nxt = info->seqnum + 1 + m->len; // TODO: logic if out of order
+          net_tx_tcp(emp, raddr, lport, rport, *state); // needs to send an ack
+          if (info->ack && info->acknum == state->snd_nxt) {
+            state->state = TS_TIME_W;
+            printf("recv fin w1 wake\n");
+            wakeup(&si->tcp);
+            if (m->len > 0)
+              goto deliver;
+            goto dump;
+          }
+          state->state = TS_CLOSING;
+          goto dump;
+        } else {
+          //jumped a packet in the middle, but we still send an ack
+          struct mbuf *emp = mbufalloc(MBUF_DEFAULT_HEADROOM);
+          net_tx_tcp(emp, raddr, lport, rport, *state); // send an ack
           goto dump;
         }
-        state->state = TS_CLOSING;
-        goto dump;
+        
       }
       if (info->ack && info->acknum == state->snd_nxt) {
         state->state = TS_FIN_W2;
@@ -402,13 +420,21 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
     case TS_FIN_W2:
       printf("recv fin w2\n");
       if (info->fin) {
-        state->rcv_nxt = info->seqnum + 1 + m->len; // TODO: logic if out of order
-        struct mbuf *emp = mbufalloc(MBUF_DEFAULT_HEADROOM);
-        net_tx_tcp(emp, raddr, lport, rport, *state); // needs to send an ack
-        state->state = TS_TIME_W;
-        printf("recv fin w2 wake\n");
-        wakeup(&si->tcp);
-        goto dump;
+        if (state->rcv_nxt == info->seqnum) {
+          //next packet in the order we're expecting
+          state->rcv_nxt = info->seqnum + 1 + m->len; // TODO: logic if out of order
+          struct mbuf *emp = mbufalloc(MBUF_DEFAULT_HEADROOM);
+          net_tx_tcp(emp, raddr, lport, rport, *state); // needs to send an ack
+          state->state = TS_TIME_W;
+          printf("recv fin w2 wake\n");
+          wakeup(&si->tcp);
+          goto dump;
+        } else {
+          //jumped a packet in the middle, but we still send an ack
+          struct mbuf *emp = mbufalloc(MBUF_DEFAULT_HEADROOM);
+          net_tx_tcp(emp, raddr, lport, rport, *state); // send an ack
+          goto dump;
+        }
       }
       break;
     case TS_CLOSING:
