@@ -185,9 +185,7 @@ sockwrite(struct sock *si, uint64 addr, int n) {
     release(&si->lock);
     return -1;
   }
-  printf("SOCKET TYPE: %d", si->type);
   if (si->type == SOCK_TYPE_UDP) {
-    printf("going to udp");
     net_tx_udp(m, si->raddr, si->lport, si->rport);
   } else {
     while (si->tcp.state != TS_ESTAB) {
@@ -270,7 +268,6 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
   struct sock *si;
   struct tcp_state *state;
 
-
   acquire(&lock);
   si = sockets;
   while(si) {
@@ -297,14 +294,11 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
   switch (state->state)
   {
     case TS_SEND_SYN:
-      printf("recv send syn\n");
       wakeup(&si->tcp);
       goto dump;
       break;
     case TS_LISTEN:
-      printf("recv listen\n");
       if (info->syn && info->ack == 0) {
-        printf("recv listen syn\n");
         si->raddr = raddr;
         si->rport = rport;
         state->irs = info->seqnum;
@@ -321,9 +315,7 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
       goto dump;
       break;
     case TS_SYN_SENT:
-      printf("recv syn sent\n");
       if (info->syn && info->ack && state->snd_una <= info->acknum) {
-          printf("recv syn sent synack\n");
           state->snd_una = info->acknum;
           state->irs = info->seqnum;
           state->rcv_nxt = info->seqnum + 1 + m->len;
@@ -338,9 +330,7 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
         }
       break;
     case TS_SYN_RECV:
-      printf("recv syn recv\n");
       if (!info->syn && info->ack && state->snd_una <= info->acknum) {
-          printf("recv syn recv ack\n");
           state->snd_una = info->acknum;
           state->rcv_nxt = info->seqnum + m->len;
           state->snd_wnd = info->window;
@@ -352,19 +342,20 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
         }
       break;
     case TS_ESTAB:
-      printf("recv estab\n");
       //snd_una <= info->acknum means old ack packet
       //state->rcv_nxt < info->seqnum means this packet should be ignored (we didnt get the packets between)
       if (!info->syn && info->ack && state->snd_una <= info->acknum) {
-        printf("recv estab legal\n");
         //legal packet
         if (state->rcv_nxt == info->seqnum) {
           //next packet in the order we're expecting
           state->snd_una = info->acknum;
           state->rcv_nxt = info->seqnum + m->len;
           state->snd_wnd = info->window;
+          if (m->len > 0) {
+            struct mbuf *emp = mbufalloc(MBUF_DEFAULT_HEADROOM);
+            net_tx_tcp(emp, raddr, lport, rport, *state); // send an ack
+          }
           if (info->fin) {
-            printf("recv estab fin\n");
             state->rcv_nxt = info->seqnum + m->len + 1;
             struct mbuf *emp = mbufalloc(MBUF_DEFAULT_HEADROOM);
             net_tx_tcp(emp, raddr, lport, rport, *state); // send an ack
@@ -388,9 +379,7 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
       goto dump;
       break;
     case TS_FIN_W1:
-      printf("recv fin w1\n");
       if (info->fin) {
-        printf("recv fin w1 fin\n");
         if (state->rcv_nxt == info->seqnum) {
           //next packet in the order we're expecting
           struct mbuf *emp = mbufalloc(MBUF_DEFAULT_HEADROOM);
@@ -398,7 +387,6 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
           net_tx_tcp(emp, raddr, lport, rport, *state); // needs to send an ack
           if (info->ack && info->acknum == state->snd_nxt) {
             state->state = TS_TIME_W;
-            printf("recv fin w1 wake\n");
             wakeup(&si->tcp);
             if (m->len > 0)
               goto deliver;
@@ -420,7 +408,6 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
       }
       break;
     case TS_FIN_W2:
-      printf("recv fin w2\n");
       if (info->fin) {
         if (state->rcv_nxt == info->seqnum) {
           //next packet in the order we're expecting
@@ -428,7 +415,6 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
           struct mbuf *emp = mbufalloc(MBUF_DEFAULT_HEADROOM);
           net_tx_tcp(emp, raddr, lport, rport, *state); // needs to send an ack
           state->state = TS_TIME_W;
-          printf("recv fin w2 wake\n");
           wakeup(&si->tcp);
           goto dump;
         } else {
@@ -440,29 +426,23 @@ sockrecvtcp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport, struct tcp
       }
       break;
     case TS_CLOSING:
-      printf("recv closing\n");
       if (info->ack && info->acknum == state->snd_nxt) {
-        printf("recv closing wake\n");
         state->state = TS_TIME_W;
         wakeup(&si->tcp);
         goto dump;
       }
       break;
     case TS_TIME_W:
-      printf("recv time w\n");
       wakeup(&si->tcp);
       goto dump;
       break;
     case TS_CLOSE_W:
-      printf("recv close w\n");
       wakeup(&si->tcp);
       goto dump;
       break;
     case TS_LAST_ACK:
-      printf("recv last ack\n");
       if (info->ack && info->acknum == state->snd_nxt) {
         state->state = TS_CLOSED;
-        printf("recv last ack wake\n");
         wakeup(&si->tcp);
         goto dump;
       }

@@ -184,13 +184,18 @@ QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0 -device virtio-blk-devic
 QEMUOPTS += -netdev socket,connect=127.0.0.1:8900,id=net0, -object filter-dump,id=net0,netdev=net0,file=packets.pcap
 QEMUOPTS += -device e1000,netdev=net0,bus=pcie.0
 
+QEMUOPTS2 = -machine virt -bios none -kernel $K/kernel -m 128M -smp $(CPUS) -nographic
+QEMUOPTS2 += -drive file=fs.img,if=none,format=raw,id=x0 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
+QEMUOPTS2 += -netdev user,id=net0,hostfwd=tcp::$(FWDPORT)-:2000 -object filter-dump,id=net0,netdev=net0,file=packets.pcap
+QEMUOPTS2 += -device e1000,netdev=net0,bus=pcie.0
+
 QEMUOPTS1 = -machine virt -bios none -kernel $K/kernel -m 128M -smp $(CPUS) -nographic
 QEMUOPTS1 += -drive file=fs.img,if=none,format=raw,id=x0 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 QEMUOPTS1 += -netdev socket,listen=:8900,id=net0, -object filter-dump,id=net0,netdev=net0,file=packets.pcap
 QEMUOPTS1 += -device e1000,netdev=net0,bus=pcie.0
 
 qemu: $K/kernel fs.img
-	$(QEMU) $(QEMUOPTS)
+	$(QEMU) $(QEMUOPTS2)
 
 qemu-server:  $K/kernel fs.img
 	$(QEMU) $(QEMUOPTS1)
@@ -218,7 +223,7 @@ tcpserver:
 	python2.7 tcpserver.py $(SERVERPORT)
 
 tcpclient:
-	python2.7 tcpclient.py $(SERVERPORT)
+	python2.7 tcpclient.py $(SERVERPORT) 100
 
 ping:
 	python2.7 ping.py $(FWDPORT)
@@ -246,7 +251,7 @@ WEBSUB := https://6828.scripts.mit.edu/2019/handin.py
 
 handin: tarball-pref myapi.key
 	@SUF=$(LAB); \
-	curl -f -F file=@lab-$$SUF-handin.tar.gz -F key=\<myapi.key $(WEBSUB)/upload \
+	curl -f -F file=proj-final.tar.gz -F key=\<myapi.key $(WEBSUB)/upload \
 	    > /dev/null || { \
 		echo ; \
 		echo Submit seems to have failed.; \

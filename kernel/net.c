@@ -250,7 +250,6 @@ net_tx_tcp(struct mbuf *m, uint32 dip, uint16 sport, uint16 dport, struct tcp_st
   printf("t tcp\n");
 
   // push options (nothing for now)
-  mbufpush(m, 4);
   // push the TCP header
   tcphdr = mbufpushhdr(m, *tcphdr);
   // default values
@@ -259,7 +258,7 @@ net_tx_tcp(struct mbuf *m, uint32 dip, uint16 sport, uint16 dport, struct tcp_st
   tcphdr->seqnum = htonl(tcp.snd_nxt);
   tcphdr->acknum = htonl(tcp.rcv_nxt);
   tcphdr->window = htons(tcp.rcv_wnd);
-  tcphdr->offset = 0x60; // 1 line of no options
+  tcphdr->offset = 0x50; // 1 line of no options
   tcphdr->urgptr = 0;
   tcphdr->flags = TCP_ACK;
   tcphdr->sum = 0;
@@ -446,7 +445,7 @@ net_rx_tcp(struct mbuf *m, uint16 len, struct ip *iphdr)
   if (lines < 5)
     goto fail;
 
-  mbufpullhdr(m, (uint16)((lines - 5) << 2)); // do nothing with these options for now
+  mbufpull(m, (uint16)((lines - 5) << 2)); // do nothing with these options for now
 
   len -= sizeof(*tcphdr);
   len -= ((lines - 5) << 2); // does this actually work

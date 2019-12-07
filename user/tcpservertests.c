@@ -27,8 +27,8 @@ echo(uint16 sport, uint64 echoes)
       exit(1);
     }
 
-    printf("write %d, %c\n", cc, ibuf[0]);
-    if(write(fd, ibuf, sizeof(ibuf)) < 0){
+    printf("echoing %s, len: %d\n", ibuf, cc);
+    if(write(fd, ibuf, cc) < 0){
       fprintf(2, "echo: send() failed\n");
       exit(1);
     }

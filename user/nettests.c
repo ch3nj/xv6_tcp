@@ -222,7 +222,6 @@ dns()
   printf("d3\n");
   int cc = read(fd, ibuf, sizeof(ibuf));
 
-
   if(cc < 0){
     fprintf(2, "dns: recv() failed\n");
     exit(1);
@@ -266,26 +265,6 @@ main(int argc, char *argv[])
   }
   printf("OK\n");
 
-
-  // // printf("testing multi-process pings: ");
-  // for (i = 0; i < 20; i++){
-  //   // int pid = fork();
-
-  //   // if (pid == 0){
-  //     printf("PROCSS NUMBER: %d", i);
-  //     ping(2000 + i + 1, dport, 1);
-  //   //   exit(0);
-  //   // }
-  // }
-
-  // for (i = 0; i < 10; i++){
-  //   wait(&ret);
-  //   if (ret != 0)
-  //     exit(1);
-  // }
-  // printf("OK\n");
-
-  // exit(0);
 
   printf("testing DNS\n");
   dns();
