@@ -182,7 +182,7 @@ static void
 net_tx_ip(struct mbuf *m, uint8 proto, uint32 dip)
 {
   struct ip *iphdr;
-  printf("t ip\n");
+  // printf("t ip\n");
 
   // push the IP header
   iphdr = mbufpushhdr(m, *iphdr);
@@ -205,7 +205,7 @@ net_tx_udp(struct mbuf *m, uint32 dip,
            uint16 sport, uint16 dport)
 {
   struct udp *udphdr;
-  printf("t udp\n");
+  // printf("t udp\n");
 
   // push the UDP header
   udphdr = mbufpushhdr(m, *udphdr);
@@ -247,7 +247,7 @@ void
 net_tx_tcp(struct mbuf *m, uint32 dip, uint16 sport, uint16 dport, struct tcp_state tcp)
 {
   struct tcp *tcphdr;
-  printf("t tcp\n");
+  // printf("t tcp\n");
 
   // push options (nothing for now)
   // push the TCP header
@@ -265,38 +265,38 @@ net_tx_tcp(struct mbuf *m, uint32 dip, uint16 sport, uint16 dport, struct tcp_st
   switch (tcp.state)
   {
     case TS_SEND_SYN:
-      printf("sending syn from %d to %d\n", sport, dport);
+      // printf("sending syn from %d to %d\n", sport, dport);
       tcphdr->seqnum = htonl(tcp.iss);
       tcphdr->flags = TCP_SYN;
       break;
     case TS_LISTEN:
-      printf("sending syn/ack from %d to %d\n", sport, dport);
+      // printf("sending syn/ack from %d to %d\n", sport, dport);
       tcphdr->seqnum = htonl(tcp.iss);
       tcphdr->flags = TCP_SYN | TCP_ACK;
       break;
     case TS_SYN_SENT:
       // send ack
-      printf("sending ack of syn from %d to %d\n", sport, dport);
+      // printf("sending ack of syn from %d to %d\n", sport, dport);
       break;
     case TS_SYN_RECV:
       break;
     case TS_ESTAB:
-      printf("sending packet from %d to %d\n", sport, dport);
+      // printf("sending packet from %d to %d\n", sport, dport);
       break;
     case TS_SEND_FIN:
-      printf("sending fin from %d to %d\n", sport, dport);
+      // printf("sending fin from %d to %d\n", sport, dport);
       tcphdr->flags = TCP_FIN | TCP_ACK;
       break;
     case TS_FIN_W1:
-      printf("sending ack of fin from %d to %d\n", sport, dport);
+      // printf("sending ack of fin from %d to %d\n", sport, dport);
       break;
     case TS_FIN_W2:
-      printf("sending ack of fin from %d to %d\n", sport, dport);
+      // printf("sending ack of fin from %d to %d\n", sport, dport);
       break;
     case TS_CLOSING:
       break;
     case TS_CLOSE_W:
-      printf("sending fin from %d to %d\n", sport, dport);
+      // printf("sending fin from %d to %d\n", sport, dport);
       tcphdr->flags = TCP_FIN | TCP_ACK;
       break;
     case TS_LAST_ACK:
@@ -319,7 +319,7 @@ net_tx_arp(uint16 op, uint8 dmac[ETHADDR_LEN], uint32 dip)
 {
   struct mbuf *m;
   struct arp *arphdr;
-  printf("t arp\n");
+  // printf("t arp\n");
 
   m = mbufalloc(MBUF_DEFAULT_HEADROOM);
   if (!m)
@@ -351,11 +351,10 @@ net_rx_arp(struct mbuf *m)
   struct arp *arphdr;
   uint8 smac[ETHADDR_LEN];
   uint32 sip, tip;
-  printf("r arp\n");
+  // printf("r arp\n");
 
   arphdr = mbufpullhdr(m, *arphdr);
   if (!arphdr) {
-    printf("fail 1");
     goto done;
   }
 
@@ -364,7 +363,6 @@ net_rx_arp(struct mbuf *m)
       ntohs(arphdr->pro) != ETHTYPE_IP ||
       arphdr->hln != ETHADDR_LEN ||
       arphdr->pln != sizeof(uint32)) {
-    printf("fail 2");
     goto done;
   }
 
@@ -372,7 +370,6 @@ net_rx_arp(struct mbuf *m)
   // check if our IP was solicited
   tip = ntohl(arphdr->tip); // target IP address
   if (ntohs(arphdr->op) != ARP_OP_REQUEST || tip != local_ip) {
-    printf("fail 3");
     goto done;
   }
 
@@ -382,7 +379,6 @@ net_rx_arp(struct mbuf *m)
   net_tx_arp(ARP_OP_REPLY, smac, sip);
 
 done:
-  // printf("failing from netrxarp");
   mbuffree(m);
 }
 
@@ -393,7 +389,6 @@ net_rx_udp(struct mbuf *m, uint16 len, struct ip *iphdr)
   struct udp *udphdr;
   uint32 sip;
   uint16 sport, dport;
-  printf("r udp\n");
 
   udphdr = mbufpullhdr(m, *udphdr);
   if (!udphdr)
@@ -428,11 +423,8 @@ net_rx_tcp(struct mbuf *m, uint16 len, struct ip *iphdr)
   struct tcp *tcphdr;
   uint32 sip, seqnum, acknum;
   uint16 sport, dport, window;
-  // uint16  sum, urgptr;
-  // uint8 offset,
   uint8 flags, ack, syn, fin;
-  // uint8 urg,  psh, rst;
-  printf("r tcp\n");
+  // printf("r tcp\n");
 
   tcphdr = mbufpullhdr(m, *tcphdr);
   if (!tcphdr)
@@ -501,7 +493,6 @@ net_rx_ip(struct mbuf *m)
 {
   struct ip *iphdr;
   uint16 len;
-  printf("r ip\n");
 
   iphdr = mbufpullhdr(m, *iphdr);
   if (!iphdr)
@@ -555,7 +546,6 @@ void net_rx(struct mbuf *m)
 
   type = ntohs(ethhdr->type);
   if (type == ETHTYPE_IP) {
-    printf("IP\n");
     net_rx_ip(m);
   }
   else if (type == ETHTYPE_ARP) {

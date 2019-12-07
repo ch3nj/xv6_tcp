@@ -21,21 +21,21 @@ ping(uint16 sport, uint16 dport, int attempts, int isMac)
     dst = (10 << 24) | (0 << 16) | (2 << 8) | (15 << 0);
   }
 
-  printf("hi1, %d, %d, %d\n", dst, sport, dport);
+  // printf("hi1, %d, %d, %d\n", dst, sport, dport);
   if((fd = connect(dst, sport, dport, SOCK_TYPE_TCP_CLIENT)) < 0){
     fprintf(2, "ping: connect() failed\n");
     exit(1);
   }
 
   for (int i = 0; i < attempts; ++i) {
-    printf("hi2\n");
+    // printf("hi2\n");
     if(write(fd, obuf, sizeof(obuf)) < 0){
       fprintf(2, "ping: send() failed\n");
       exit(1);
     }
     printf("sent %s, len: %d\n", obuf, sizeof(obuf));
 
-    printf("hi3\n");
+    // printf("hi3\n");
     char ibuf[128];
     int cc = read(fd, ibuf, sizeof(ibuf));
     if(cc < 0){

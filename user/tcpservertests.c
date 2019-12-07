@@ -19,7 +19,7 @@ echo(uint16 sport, uint64 echoes)
 
 
   for (int i = 0; i < echoes; ++i) {
-    printf("read\n");
+    // printf("read\n");
     char ibuf[128];
     int cc = read(fd, ibuf, sizeof(ibuf));
     if(cc < 0){
